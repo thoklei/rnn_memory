@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import argparse
+import os
 import tensorflow as tf
 import data_provider
 
@@ -44,7 +44,6 @@ def model_fn(features, labels, mode, params):
     """Model Function"""
 
     config = params['config']
-    #net = tf.feature_column.input_layer(features, params['feature_columns'])
 
     inp = tf.unstack(tf.cast(features,tf.float32), axis=1)
 
@@ -65,6 +64,8 @@ def model_fn(features, labels, mode, params):
 
     logits = tf.layers.dense(outputs[-1], config.output_dim, activation=None)
 
+    #logits += 1e-8 # to prevent NaN loss during training
+
     # Compute predictions.
     predicted_classes = tf.argmax(logits, 1)
     if mode == tf.estimator.ModeKeys.PREDICT:
@@ -74,7 +75,6 @@ def model_fn(features, labels, mode, params):
             'logits': logits,
         }
         return tf.estimator.EstimatorSpec(mode, predictions=predictions)
-
     # Compute loss.
     loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
 
@@ -92,7 +92,7 @@ def model_fn(features, labels, mode, params):
     # Create training op.
     assert mode == tf.estimator.ModeKeys.TRAIN
 
-    optimizer = tf.train.AdagradOptimizer(learning_rate=0.1)
+    optimizer = tf.train.AdagradOptimizer(learning_rate=1e-4 )
     train_op = optimizer.minimize(loss, global_step=tf.train.get_global_step())
     return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op)
 
@@ -108,16 +108,27 @@ def main(_):
             'model': FLAGS.model,
             'config':config
         })
+    for epoch in range(config.num_epochs):
+        # Train the Model.
+        classifier.train(
+            input_fn=lambda:data_provider.train_input_fn(FLAGS.data_path, FLAGS.task, config),
+            steps=500) #500*128 = 64000 = number of training samples
 
-    # Train the Model.
-    classifier.train(input_fn=lambda:data_provider.train_input_fn(FLAGS.data_path, FLAGS.task, config))
+        # Evaluate the model.
+        eval_result = classifier.evaluate(
+            input_fn=lambda:data_provider.validation_input_fn(FLAGS.data_path, FLAGS.task, config),
+            steps=100,
+            name="validation")
 
-    # Evaluate the model.
+        print('\nValidation set accuracy after epoch {}: {accuracy:0.3f}\n'.format(epoch,**eval_result))
+
     eval_result = classifier.evaluate(
-        input_fn=lambda:data_provider.eval_input_fn(FLAGS.data_path, FLAGS.task, config))
-
+        input_fn=lambda:data_provider.test_input_fn(FLAGS.data_path, FLAGS.task, config),
+        name="test"
+    )
+    
     print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
-
+    
 
 if __name__ == '__main__':
     tf.logging.set_verbosity(tf.logging.INFO)

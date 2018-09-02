@@ -80,7 +80,7 @@ def create_data(num_samples):
     Create a num_samples long set of X and y.
     """
     X = np.zeros([num_samples, 9, 26+10+1], dtype=np.int32)
-    y = np.zeros([num_samples, 26+10+1], dtype=np.int32)
+    y = np.zeros([num_samples, 1], dtype=np.int32)
     for i in range(num_samples):
         X[i], y[i] = create_sequence()
     return X, y

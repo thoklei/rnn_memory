@@ -1,7 +1,7 @@
 import tensorflow as tf
 import os
 
-def read_dataset(path, mode, batch_size, num_epochs, seq_length, seq_width, datatype):
+def read_dataset(path, mode, batch_size, repeat, seq_length, seq_width, datatype):
     """
     Reads data from .tfrecords-file, decodes it and returns the dataset as a
     tf.data.TFRecordDataset.
@@ -33,42 +33,42 @@ def read_dataset(path, mode, batch_size, num_epochs, seq_length, seq_width, data
         seq = tf.decode_raw(parsed_features["raw_sequence"], datatype)
         seq.set_shape(seq_length*seq_width)
         seq = tf.reshape(seq, [seq_length, seq_width])
-        seq = tf.cast(seq, datatype)
+        seq = tf.cast(seq, tf.int32)
 
         # retrieve labels [i.e. last and to be predicted element of sequence]
         label = tf.decode_raw(parsed_features["raw_label"], datatype)
-        label.set_shape(seq_width)
-        label = tf.cast(label, datatype)
+        label.set_shape(1)
+        label = tf.cast(label, tf.int32)
 
         return seq, label
 
     training_path = os.path.join(path, mode+'.tfrecords')
     training_dataset = tf.data.TFRecordDataset(training_path)
     training_dataset = training_dataset.map(_parse_function)
+    training_dataset = training_dataset.shuffle(10000)
     training_dataset = training_dataset.batch(batch_size)
-    training_dataset = training_dataset.repeat(num_epochs)
+    if(repeat):
+        training_dataset = training_dataset.repeat()
 
-    """ validation_path = os.path.join(FLAGS.data_path, 'validation.tfrecords')
-    validation_dataset = tf.data.TFRecordDataset(validation_path)
-    validation_dataset = validation_dataset.map(_parse_function)
-    validation_dataset = validation_dataset.batch(batch_size)
-    validation_dataset = validation_dataset.repeat(num_epochs) """
-
-    return training_dataset #, validation_dataset
+    return training_dataset 
 
 
-def input_fn(path, task, config, mode):
+def input_fn(path, task, config, mode, repeat):
     if(task == "mnist"):
-        return read_dataset(path, mode, config.batchsize, config.num_epochs, seq_length=784, seq_width=1, datatype=tf.int32)
+        return read_dataset(path, mode, config.batchsize, repeat, seq_length=784, seq_width=1, datatype=tf.uint8)
     elif(task=="associative_retrieval"):
-        return read_dataset(path, mode, config.batchsize, config.num_epochs, seq_length=9, seq_width=37, datatype=tf.int32)
+        return read_dataset(path, mode, config.batchsize, repeat, seq_length=9, seq_width=37, datatype=tf.int32)
     else:
         raise ValueError("Task type not understood.")
 
 
-def eval_input_fn(path, task, config):
-    return input_fn(path, task, config, 'test')
-
-
 def train_input_fn(path, task, config):
-    return input_fn(path, task, config, 'train')
+    return input_fn(path, task, config, 'train', True)
+
+
+def validation_input_fn(path, task, config):
+    return input_fn(path, task, config, 'validation', False)
+
+
+def test_input_fn(path, task, config):
+    return input_fn(path, task, config, 'test', False)

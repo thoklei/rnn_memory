@@ -8,6 +8,7 @@ https://github.com/tensorflow/tensorflow/blob/master/tensorflow/examples/how_tos
 """
 
 import argparse
+import numpy as np
 import os
 import tensorflow as tf
 from data_utils import create_data
@@ -64,6 +65,7 @@ def record_mnist():
 
     def _convert_to(data_set, name):
       """Converts a dataset to tfrecords."""
+      assert not np.any(np.isnan(data_set.images))
       images = data_set.images
       labels = data_set.labels
       num_examples = data_set.num_examples

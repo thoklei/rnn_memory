@@ -1,5 +1,5 @@
 class DefaultConfig(object):
-    num_epochs = 1000
+    num_epochs = 200 # should be 100.000 steps 
     batchsize = 128
     layer_dim = 50
     learning_rate = 1e-4
