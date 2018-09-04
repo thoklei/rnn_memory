@@ -33,7 +33,7 @@ def read_dataset(path, mode, batch_size, repeat, seq_length, seq_width, datatype
         seq = tf.decode_raw(parsed_features["raw_sequence"], datatype)
         seq.set_shape(seq_length*seq_width)
         seq = tf.reshape(seq, [seq_length, seq_width])
-        seq = tf.cast(seq, tf.int32)
+        seq = tf.cast(seq, tf.float32)
 
         # retrieve labels [i.e. last and to be predicted element of sequence]
         label = tf.decode_raw(parsed_features["raw_label"], datatype)
@@ -46,7 +46,7 @@ def read_dataset(path, mode, batch_size, repeat, seq_length, seq_width, datatype
     training_dataset = tf.data.TFRecordDataset(training_path)
     training_dataset = training_dataset.map(_parse_function)
     training_dataset = training_dataset.shuffle(10000)
-    training_dataset = training_dataset.batch(batch_size)
+    training_dataset = training_dataset.batch(batch_size, drop_remainder=True)
     if(repeat):
         training_dataset = training_dataset.repeat()
 

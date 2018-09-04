@@ -19,6 +19,8 @@ class Default_MNIST_Config(DefaultConfig):
     input_dim = 1
     embedding_size = 100
     output_dim = 10
+    c_alpha = 50
+    c_lambda = 0.01
 
 
 class Default_AR_Config(DefaultConfig):

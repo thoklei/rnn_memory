@@ -76,7 +76,7 @@ class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):#tf.nn.rnn_cell.BasicRNNCell):
         state = tf.nn.tanh(
             (inputs @ self.W_in + self.b_in) + (state @ self.W)
         )
-
+        
         # with tf.variable_scope('layer_norm'):
         #     mu = tf.reduce_mean(h, reduction_indices=0)
         #     sigma = tf.sqrt(tf.reduce_mean(tf.square(h - mu),
@@ -96,6 +96,8 @@ class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):#tf.nn.rnn_cell.BasicRNNCell):
 
 
         state = state @ self.C
+
+        #state = tf.Print(state, [state])
 
         # with tf.variable_scope('layer_norm'):
         #     mu = tf.reduce_mean(h, reduction_indices=0)
