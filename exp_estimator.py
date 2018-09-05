@@ -9,7 +9,7 @@ import data_provider
 from autoconceptor import Autoconceptor
 from irnn_cell import IRNNCell
 from fast_weight_cell import FastWeightCell
-from configs import Default_AR_Config, Default_MNIST_Config
+from configs import *
 
 flags = tf.flags # cmd line FLAG manager for tensorflow
 logging = tf.logging # logging manager for tensorflow
@@ -24,19 +24,21 @@ flags.DEFINE_bool("use_bfp16", False,
     "Train using 16-bit truncated floats instead of 32-bit float")
 flags.DEFINE_string("model", "fast_weights",
     "Which type of Model to use. Options are: rnn, lstm, irnn, fast_weights, conceptor")
-flags.DEFINE_string("task", "mnist",
-    "Which task to solve. Options are: mnist, associative_retrieval")
+flags.DEFINE_string("task", "mnist_28",
+    "Which task to solve. Options are: mnist_28, mnist_784, associative_retrieval")
 
 FLAGS = flags.FLAGS
 
 def get_config():
     config = None
-    if FLAGS.config == "default_mnist":
-        config = Default_MNIST_Config()
+    if FLAGS.config == "mnist_784":
+        config = MNIST_784_Config()
     elif FLAGS.config == "default_ar":
         config = Default_AR_Config()
+    elif FLAGS.config == "mnist_28":
+        config = MNIST_28_Config()
     else:
-        raise ValueError("Config not understood. Options are: default_ar, default_mnist.")
+        raise ValueError("Config not understood. Options are: default_ar, mnist_784, mnist_28.")
     return config
 
 
@@ -92,7 +94,7 @@ def model_fn(features, labels, mode, params):
     # Create training op.
     assert mode == tf.estimator.ModeKeys.TRAIN
 
-    optimizer = tf.train.AdagradOptimizer(learning_rate=1e-4 )
+    optimizer = config.optimizer
     train_op = optimizer.minimize(loss, global_step=tf.train.get_global_step())
     return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op)
 
@@ -106,7 +108,7 @@ def main(_):
         model_dir=FLAGS.save_path,
         params={
             'model': FLAGS.model,
-            'config':config
+            'config': config
         })
     for epoch in range(config.num_epochs):
         # Train the Model.
