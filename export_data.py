@@ -11,7 +11,7 @@ import argparse
 import numpy as np
 import os
 import tensorflow as tf
-from data_utils import create_data
+from data_utils import create_data, create_addition_data
 from tensorflow.contrib.learn.python.learn.datasets import mnist
 
 flags = tf.flags
@@ -19,6 +19,8 @@ flags.DEFINE_string("dataset", None,
     "Specify which dataset to TFRecord. Options are: mnist, associative-retrieval")
 flags.DEFINE_string("path", None,
     "Specifiy where to save the TFRecord dataset.")
+flags.DEFINE_integer("length", 10,
+    "Specify how many values to add (only for addition dataset)")
 
 FLAGS = flags.FLAGS
 
@@ -59,13 +61,42 @@ def record_ar():
     return None
 
 
+def record_addition(sequence_length):
+    def _convert_to(data_set, name):
+        seq, labels = data_set
+        num_examples = len(seq)
+        seq_length = seq.shape[1] # length of each sequence to be classified
+        seq_width = seq.shape[2] # Embedding width
+
+        filename = os.path.join(FLAGS.path, name + '.tfrecords')
+        print('Writing', filename)
+
+        with tf.python_io.TFRecordWriter(filename) as writer:
+            for idx in range(num_examples):
+                raw_seq = seq[idx].tostring()
+                raw_label = labels[idx].tostring()
+                example = tf.train.Example(features=tf.train.Features(feature={
+                    'length': _int64_feature(seq_length),
+                    'width': _int64_feature(seq_width),
+                    'raw_sequence': _bytes_feature(raw_seq),
+                    'raw_label': _bytes_feature(raw_label)
+                }))
+                writer.write(example.SerializeToString())
+
+    _convert_to(create_addition_data(num_samples=100000, sequence_length=sequence_length), 'train')
+    _convert_to(create_addition_data(num_samples=20000, sequence_length=sequence_length), 'test')
+    _convert_to(create_addition_data(num_samples=10000, sequence_length=sequence_length), 'validation')
+
+    return None
+
+
+
 def record_mnist():
     """
     """
 
     def _convert_to(data_set, name):
       """Converts a dataset to tfrecords."""
-      assert not np.any(np.isnan(data_set.images))
       images = data_set.images
       labels = data_set.labels
       num_examples = data_set.num_examples
@@ -117,6 +148,8 @@ def main(_):
         record_mnist()
     elif FLAGS.dataset == 'associative-retrieval':
         record_ar()
+    elif(FLAGS.dataset == 'addition'):
+        record_addition(FLAGS.length)
     else:
         raise ValueError("dataset not understood, use 'mnist' or 'associative-retrieval'")
 

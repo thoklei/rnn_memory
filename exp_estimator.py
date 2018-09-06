@@ -5,11 +5,8 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 import data_provider
-
-from autoconceptor import Autoconceptor
-from irnn_cell import IRNNCell
-from fast_weight_cell import FastWeightCell
 from configs import *
+import model_functions 
 
 flags = tf.flags # cmd line FLAG manager for tensorflow
 logging = tf.logging # logging manager for tensorflow
@@ -37,66 +34,20 @@ def get_config():
         config = Default_AR_Config()
     elif FLAGS.config == "mnist_28":
         config = MNIST_28_Config()
+    elif FLAGS.config == "addition":
+        config = Default_Addition_Config()
     else:
         raise ValueError("Config not understood. Options are: default_ar, mnist_784, mnist_28.")
     return config
 
 
-def model_fn(features, labels, mode, params):
-    """Model Function"""
 
-    config = params['config']
 
-    inp = tf.unstack(tf.cast(features,tf.float32), axis=1)
-
-    if(params['model'] == 'rnn'):
-        cell = tf.contrib.rnn.BasicRNNCell(config.layer_dim)
-    elif(params['model'] == 'lstm'):
-        cell = tf.contrib.rnn.BasicLSTMCell(config.layer_dim)
-    elif(params['model'] == 'irnn'):
-        cell = IRNNCell(config.layer_dim)
-    elif(params['model'] == 'fast_weights'):
-        cell = FastWeightCell(config.layer_dim,config.fw_lambda,config.fw_eta, activation=tf.nn.tanh)
-    elif(params['model'] == 'autoconceptor'):
-        cell = Autoconceptor(config.layer_dim, config.c_alpha, config.c_lambda, config.batchsize)   
+def get_model_fn(task):
+    if(task == "addition"):
+        return model_functions.scalar_model_fn
     else:
-        raise ValueError("Cell type not understood.")
-
-    outputs, _ = tf.nn.static_rnn(cell, inp, dtype=tf.float32)
-
-    logits = tf.layers.dense(outputs[-1], config.output_dim, activation=None)
-
-    #logits += 1e-8 # to prevent NaN loss during training
-
-    # Compute predictions.
-    predicted_classes = tf.argmax(logits, 1)
-    if mode == tf.estimator.ModeKeys.PREDICT:
-        predictions = {
-            'class_ids': predicted_classes[:, tf.newaxis],
-            'probabilities': tf.nn.softmax(logits),
-            'logits': logits,
-        }
-        return tf.estimator.EstimatorSpec(mode, predictions=predictions)
-    # Compute loss.
-    loss = tf.losses.sparse_softmax_cross_entropy(labels=labels, logits=logits)
-
-    # Compute evaluation metrics.
-    accuracy = tf.metrics.accuracy(labels=labels,
-                                   predictions=predicted_classes,
-                                   name='acc_op')
-    metrics = {'accuracy': accuracy}
-    tf.summary.scalar('accuracy', accuracy[1])
-
-    if mode == tf.estimator.ModeKeys.EVAL:
-        return tf.estimator.EstimatorSpec(
-            mode, loss=loss, eval_metric_ops=metrics)
-
-    # Create training op.
-    assert mode == tf.estimator.ModeKeys.TRAIN
-
-    optimizer = config.optimizer
-    train_op = optimizer.minimize(loss, global_step=tf.train.get_global_step())
-    return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op)
+        return model_functions.classification_model_fn
 
 
 def main(_):
@@ -104,7 +55,7 @@ def main(_):
     config = get_config()
 
     classifier = tf.estimator.Estimator(
-        model_fn=model_fn,
+        model_fn=get_model_fn(FLAGS.task),
         model_dir=FLAGS.save_path,
         params={
             'model': FLAGS.model,
@@ -122,7 +73,7 @@ def main(_):
             steps=100,
             name="validation")
 
-        print('\nValidation set accuracy after epoch {}: {accuracy:0.3f}\n'.format(epoch,**eval_result))
+        print('\nValidation set accuracy after epoch {}: {accuracy:0.3f}\n'.format(epoch+1,**eval_result))
 
     eval_result = classifier.evaluate(
         input_fn=lambda:data_provider.test_input_fn(FLAGS.data_path, FLAGS.task, config),

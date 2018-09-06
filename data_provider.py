@@ -55,11 +55,13 @@ def read_dataset(path, mode, batch_size, repeat, seq_length, seq_width, datatype
 
 def input_fn(path, task, config, mode, repeat):
     if(task == "mnist_784"):
-        return read_dataset(path, mode, config.batchsize, repeat, seq_length=784, seq_width=1, datatype=tf.uint8)
+        return read_dataset(path, mode, config.batchsize, repeat, seq_length=config.input_length, seq_width=config.input_dim, datatype=tf.uint8)
     elif(task=="associative_retrieval"):
-        return read_dataset(path, mode, config.batchsize, repeat, seq_length=9, seq_width=37, datatype=tf.int32)
+        return read_dataset(path, mode, config.batchsize, repeat, seq_length=config.input_length, seq_width=config.input_dim, datatype=tf.int32)
     elif(task == "mnist_28"):
-        return read_dataset(path, mode, config.batchsize, repeat, seq_length=28, seq_width=28, datatype=tf.uint8)    
+        return read_dataset(path, mode, config.batchsize, repeat, seq_length=config.input_length, seq_width=config.input_dim, datatype=tf.uint8)    
+    elif(task == "addition"):
+        return read_dataset(path, mode, config.batchsize, repeat, seq_length=config.input_length, seq_width=config.input_dim, datatype=tf.float32)
     else:
         raise ValueError("Task type not understood.")
 

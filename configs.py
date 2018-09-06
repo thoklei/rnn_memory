@@ -39,3 +39,13 @@ class Default_AR_Config(DefaultConfig):
     input_dim = 26+10+1
     output_dim = 26+10+1
     optimizer = tf.train.AdagradOptimizer(learning_rate=1e-4)
+
+
+class Default_Addition_Config(DefaultConfig):
+    input_length = 100
+    input_dim = 2
+    output_dim = 1
+    c_alpha = 40 #40
+    c_lambda = 0.01
+    layer_dim = 100
+

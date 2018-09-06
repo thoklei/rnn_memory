@@ -85,10 +85,30 @@ def create_data(num_samples):
         X[i], y[i] = create_sequence()
     return X, y
 
-def generate_epoch(X, y, num_epochs, batch_size):
 
-    for epoch_num in range(num_epochs):
-        yield generate_batch(X, y, batch_size)
+def create_addition_data(num_samples, sequence_length):
+    """
+    creates data for the addition task as presented in 
+    """
+    x = np.zeros([num_samples, sequence_length, 2], dtype=np.float32)
+    y = np.zeros([num_samples], dtype=np.float32)
+    for i in range(num_samples):
+        x[i,:,0] = np.round(np.random.rand(sequence_length),1)
+        a = random.randint(0,sequence_length-1)
+        b = random.randint(0,sequence_length-1)
+        while(b == a):
+            b = random.randint(0,sequence_length-1)
+        x[i,a,1] = 1
+        x[i,b,1] = 1
+        y[i] = x[i,a,0]+x[i,b,0]
+    return x, y
+
+
+
+# def generate_epoch(X, y, num_epochs, batch_size):
+
+#     for epoch_num in range(num_epochs):
+#         yield generate_batch(X, y, batch_size)
 
 def generate_batch(X, y, batch_size):
 
