@@ -15,6 +15,7 @@ class DefaultConfig(object):
     norm_gain =  1
     norm_shift = 1
     optimizer = tf.train.AdamOptimizer()
+    clip_gradients = False
 
 
 class MNIST_784_Config(DefaultConfig):
@@ -48,4 +49,9 @@ class Default_Addition_Config(DefaultConfig):
     c_alpha = 40 #40
     c_lambda = 0.01
     layer_dim = 100
+    optimizer = tf.train.GradientDescentOptimizer(0.01)
+    clip_gradients = True
+    clip_value_max = 100
+    clip_value_min = -100
+
 

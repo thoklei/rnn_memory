@@ -63,8 +63,14 @@ def classification_model_fn(features, labels, mode, params):
     assert mode == tf.estimator.ModeKeys.TRAIN
 
     optimizer = config.optimizer
-    train_op = optimizer.minimize(loss, global_step=tf.train.get_global_step())
+    if(config.clip_gradients):
+        gvs = optimizer.compute_gradients(loss)
+        capped_gvs = [(tf.clip_by_value(grad, config.clip_value_min, config.clip_value_max), var) for grad, var in gvs]
+        train_op = optimizer.apply_gradients(capped_gvs, global_step=tf.train.get_global_step())
+    else:
+        train_op = optimizer.minimize(loss, global_step=tf.train.get_global_step())
     return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op)
+
 
 
 def scalar_model_fn(features, labels, mode, params):
@@ -103,5 +109,10 @@ def scalar_model_fn(features, labels, mode, params):
     assert mode == tf.estimator.ModeKeys.TRAIN
 
     optimizer = config.optimizer
-    train_op = optimizer.minimize(loss, global_step=tf.train.get_global_step())
+    if(config.clip_gradients):
+        gvs = optimizer.compute_gradients(loss)
+        capped_gvs = [(tf.clip_by_value(grad, config.clip_value_min, config.clip_value_max), var) for grad, var in gvs]
+        train_op = optimizer.apply_gradients(capped_gvs, global_step=tf.train.get_global_step())
+    else:
+        train_op = optimizer.minimize(loss, global_step=tf.train.get_global_step())
     return tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op)
