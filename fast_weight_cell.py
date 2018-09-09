@@ -141,9 +141,6 @@ class FastWeightCell(rnn_cell_impl.RNNCell):
         # since A is [BATCH x N x N], i.e. for every batch a different A is used,
         # we need to reshape h to work with that
         h_0 = self._activation(linear)
-        print(("h_0 is:",h_0))
-        print("reshaped h_0 is:",tf.reshape(h_0, [-1,1,self._num_units]))
-        print("A is:",A)
         h_A = tf.reshape(tf.matmul(tf.reshape(h_0, [-1,1,self._num_units]), A), [-1, self._num_units])
         # h_pre = (linear + math_ops.matmul(h_0, A))
         h_pre = linear + h_A
@@ -152,9 +149,6 @@ class FastWeightCell(rnn_cell_impl.RNNCell):
 
         # update matrix
         A = self._matrix_update(A, h)
-
-        # reshape
-        h = tf.reshape(h, [-1, self._num_units])
 
         return h, DynStateTuple(A, h)
 

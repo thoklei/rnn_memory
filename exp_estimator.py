@@ -8,6 +8,7 @@ import data_provider
 from configs import *
 import model_functions 
 
+
 flags = tf.flags # cmd line FLAG manager for tensorflow
 logging = tf.logging # logging manager for tensorflow
 
