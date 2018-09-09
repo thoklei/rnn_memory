@@ -10,7 +10,8 @@ from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import nn_ops
 from tensorflow.python.ops import variable_scope as vs
-from tensorflow.contrib.rnn.python.ops.core_rnn_cell import _linear
+#from tensorflow.contrib.rnn.python.ops.core_rnn_cell import _linear
+from tensorflow.python.ops.rnn_cell_impl import _linear
 
 
 class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
