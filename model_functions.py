@@ -12,8 +12,10 @@ def get_rnn_cell(cell_type, config):
         cell = tf.contrib.rnn.BasicLSTMCell(config.layer_dim)
     elif(cell_type == 'irnn'):
         cell = IRNNCell(config.layer_dim)
-    elif(cell_type == 'fast_weights'):
+    elif(cell_type == 'dynamic_fast_weights'):
         cell = DynamicFastWeightCell(config.layer_dim,config.fw_lambda,config.fw_eta, activation=tf.nn.tanh, batch_size=config.batchsize)
+    elif(cell_type == 'fast_weights'):
+        cell = FastWeightCell(config.layer_dim,config.fw_lambda,config.fw_eta, activation=tf.nn.tanh)
     elif(cell_type == 'autoconceptor'):
         cell = Autoconceptor(config.layer_dim, config.c_alpha, config.c_lambda, config.batchsize, activation=tf.nn.relu, layer_norm=config.c_layer_norm)   
     else:
@@ -24,6 +26,8 @@ def get_rnn_cell(cell_type, config):
 
 def classification_model_fn(features, labels, mode, params):
     """Model Function"""
+
+    print(features)
 
     config = params['config']
 
