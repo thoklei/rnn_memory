@@ -46,7 +46,8 @@ def read_dataset(path, mode, batch_size, repeat, seq_length, seq_width, datatype
     training_dataset = tf.data.TFRecordDataset(training_path)
     training_dataset = training_dataset.map(_parse_function)
     training_dataset = training_dataset.shuffle(10000)
-    training_dataset = training_dataset.batch(batch_size, drop_remainder=True)
+    training_dataset = training_dataset.apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
+    #training_dataset = training_dataset.batch(batch_size, drop_remainder=True)
     if(repeat):
         training_dataset = training_dataset.repeat()
 
