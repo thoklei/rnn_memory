@@ -26,6 +26,7 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
                  activation=tf.nn.relu,
                  batch_size=128,
                  num_inner_loops=1,
+                 sequence_length=9 
                  reuse=None):
         """ Initialize parameters for a FastWeightCell
 
@@ -49,6 +50,7 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
         self._eta = eta
         self.batch_size = batch_size
         self.num_inner_loops = num_inner_loops
+        self.sequence_length = sequence_length
 
         self._layer_norm = layer_norm
         # if self._layer_norm:
@@ -126,9 +128,6 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
             inputs: `2-D` tensor with shape `[batch_size x input_size]`
             state: A DynStateTuple
         """
-        # if(self.counter == 9):
-        #     self.counter = 0
-        #     self.hidden_states = []
 
         h = state
         # update network
@@ -146,7 +145,7 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
 
             state_sum = tf.zeros([self.batch_size,self._num_units])
             t = len(self.hidden_states)
-            for tau, old_hidden in enumerate(self.hidden_states):
+            for tau, old_hidden in enumerate(reversed(self.hidden_states)):
                 #scal_prod = tf.reshape(tf.matmul(tf.transpose(old_hidden),h_0),[1, self._num_units, self._num_units])
                 #print(scal_prod)
                 #state_sum += tf.matmul(tf.reshape(self._lam**(t-tau-1) * old_hidden,[1,-1,self._num_units]),scal_prod) 
@@ -164,5 +163,11 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
 
 
         self.hidden_states.append(h_s)
-        #self.counter += 1
+
+        self.counter += 1
+        # if we saw the n-th element, sequence is over, clear list, reset counter
+        if(self.counter == self.sequence_length):
+            self.counter = 0
+            self.hidden_states = []
+
         return h_s, h_s
