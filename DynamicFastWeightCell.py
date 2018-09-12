@@ -14,10 +14,8 @@ from tensorflow.contrib.rnn.python.ops.core_rnn_cell import _linear
 
 
 class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
-    """ A FastWeight Cell following Ba et al (2016)
-
-    TODO: This should overwrite the zero_state function of RNNCell to be applicable
-    to the fast-weight matrix as well. //problem_solved.
+    """ 
+    A FastWeight Cell following Ba et al (2016)
     """
 
     def __init__(self, num_units, lam, eta,
@@ -27,6 +25,7 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
                  weights_initializer=None,
                  activation=None,
                  batch_size=128,
+                 num_inner_loops=1,
                  reuse=None):
         """ Initialize parameters for a FastWeightCell
 
@@ -48,6 +47,7 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
         self._lam = lam
         self._eta = eta
         self.batch_size = batch_size
+        self.num_inner_loops = num_inner_loops
 
         self._layer_norm = layer_norm
         # if self._layer_norm:
@@ -137,30 +137,31 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
         #linear = tf.matmul(inputs,self.W_in) + tf.matmul(state,self.W)
         # since A is [BATCH x N x N], i.e. for every batch a different A is used,
         # we need to reshape h to work with that
-        h_0 = self._activation(linear)
+        h_s = self._activation(linear)
         
         # inner loop
         #h_A = tf.reshape(tf.matmul(tf.reshape(h_0, [-1,1,self._num_units]), A), [-1, self._num_units])
-        
-        state_sum = tf.zeros([self.batch_size,self._num_units])
-        t = len(self.hidden_states)
-        for tau, old_hidden in enumerate(reversed(self.hidden_states)):
-            #scal_prod = tf.reshape(tf.matmul(tf.transpose(old_hidden),h_0),[1, self._num_units, self._num_units])
-            #print(scal_prod)
-            #state_sum += tf.matmul(tf.reshape(self._lam**(t-tau-1) * old_hidden,[1,-1,self._num_units]),scal_prod) 
-            scal_prod = tf.reduce_sum(tf.multiply(tf.matmul(old_hidden,tf.transpose(h_0)),tf.diag(np.ones([self.batch_size], dtype=np.float32))),1)
-            #print(scal_prod) # should be b,1
-            state_sum += tf.multiply(self._lam**(t-tau-1) * old_hidden,tf.reshape(scal_prod,[self.batch_size,1]))
-            #print(state_sum)
+        for _ in range(self.num_inner_loops):
 
-        h_A = self._eta * tf.reshape(state_sum,[-1,self._num_units])
+            state_sum = tf.zeros([self.batch_size,self._num_units])
+            t = len(self.hidden_states)
+            for tau, old_hidden in enumerate(reversed(self.hidden_states)):
+                #scal_prod = tf.reshape(tf.matmul(tf.transpose(old_hidden),h_0),[1, self._num_units, self._num_units])
+                #print(scal_prod)
+                #state_sum += tf.matmul(tf.reshape(self._lam**(t-tau-1) * old_hidden,[1,-1,self._num_units]),scal_prod) 
+                scal_prod = tf.reduce_sum(tf.multiply(tf.matmul(old_hidden,tf.transpose(h_s)),tf.diag(np.ones([self.batch_size], dtype=np.float32))),1)
+                #print(scal_prod) # should be b,1
+                state_sum += tf.multiply(self._lam**(t-tau-1) * old_hidden,tf.reshape(scal_prod,[self.batch_size,1]))
+                #print(state_sum)
 
-        h_pre = linear + h_A
+            h_A = self._eta * tf.reshape(state_sum,[-1,self._num_units])        
+            
+            h_pre = linear + h_A
 
-        h_ln = self._norm(h_pre)
-        h = self._activation(h_ln)
+            h_ln = self._norm(h_pre)
+            h_s = self._activation(h_ln)
 
 
-        self.hidden_states.append(h)
+        self.hidden_states.append(h_s)
         #self.counter += 1
-        return h, h
+        return h_s, h_s
