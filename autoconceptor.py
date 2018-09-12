@@ -7,10 +7,10 @@ np.set_printoptions(threshold=np.inf)
 
 class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):#tf.nn.rnn_cell.BasicRNNCell):
 
-    def __init__(self, num_units, c_alpha, c_lambda, batchsize, activation=tf.nn.tanh, layer_norm=False):
+    def __init__(self, num_units, alpha, lam, batchsize, activation=tf.nn.tanh, layer_norm=False):
         super(Autoconceptor, self).__init__(num_units, activation)
         self.num_units = num_units
-        self.c_alpha = c_alpha
+        self.c_alpha = alpha
         self.c_lambda = c_lambda
         self.batchsize = batchsize
         self.conceptor_built = False

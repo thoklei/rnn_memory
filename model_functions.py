@@ -1,7 +1,7 @@
 from autoconceptor import Autoconceptor
 from irnn_cell import IRNNCell
 from fast_weight_cell import FastWeightCell
-from DynamicFastWeightCell import DynamicFastWeightCell
+from dynamic_fast_weight_cell import DynamicFastWeightCell
 
 import tensorflow as tf
 
@@ -13,9 +13,30 @@ def get_rnn_cell(cell_type, config):
     elif(cell_type == 'irnn'):
         cell = IRNNCell(config.layer_dim)
     elif(cell_type == 'fast_weights'):
-        cell = DynamicFastWeightCell(config.layer_dim,config.fw_lambda,config.fw_eta, activation=tf.nn.tanh, batch_size=config.batchsize)
+        cell = FastWeightCell(num_units = config.layer_dim,
+                              lam = config.fw_lambda,
+                              eta = config.fw_eta, 
+                              layer_norm = config.layer_norm,
+                              norm_gain = config.norm_gain,
+                              norm_shift = config.norm_shift,
+                              activation = config.activation)
+    elif(cell_type == 'dynamic_fast_weights'):
+        cell = DynamicFastWeightCell(num_units = config.layer_dim, 
+                                     lam = config.fw_lambda, 
+                                     eta = config.fw_eta, 
+                                     layer_norm = config.layer_norm, 
+                                     norm_gain = config.norm_gain,
+                                     norm_shift = config.norm_shift,
+                                     activation = config.activation,
+                                     batch_size = config.batchsize, 
+                                     num_inner_loops=config.fw_inner_loops)
     elif(cell_type == 'autoconceptor'):
-        cell = Autoconceptor(config.layer_dim, config.c_alpha, config.c_lambda, config.batchsize, activation=tf.nn.relu, layer_norm=config.c_layer_norm)   
+        cell = Autoconceptor(num_units = config.layer_dim, 
+                             alpha = config.c_alpha, 
+                             lam = config.c_lambda, 
+                             batchsize = config.batchsize, 
+                             activation=config.activation, 
+                             layer_norm=config.layer_norm)   
     else:
         raise ValueError("Cell type not understood.")
     

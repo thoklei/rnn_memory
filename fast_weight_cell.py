@@ -61,7 +61,7 @@ class FastWeightCell(rnn_cell_impl.RNNCell):
                  norm_gain=1,
                  norm_shift=1,
                  weights_initializer=None,
-                 activation=None,
+                 activation=tf.nn.relu,
                  reuse=None):
         """ Initialize parameters for a FastWeightCell
 
@@ -95,7 +95,7 @@ class FastWeightCell(rnn_cell_impl.RNNCell):
         # self._batch_s = batch_size
 
         # self._weights_initializer = weights_initializer or init_ops.RandomUniform(-1, 1) #NOTE: NOT USED
-        self._activation = activation or tf.nn.relu
+        self._activation = activation
 
         self._state_size = DynStateTuple([num_units, num_units], num_units)
 

@@ -23,7 +23,7 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
                  norm_gain=1,
                  norm_shift=1,
                  weights_initializer=None,
-                 activation=None,
+                 activation=tf.nn.relu,
                  batch_size=128,
                  num_inner_loops=1,
                  reuse=None):
@@ -43,6 +43,7 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
 
         """
         super(DynamicFastWeightCell, self).__init__(num_units, activation, reuse)
+        print(activation)
         self._num_units = num_units
         self._lam = lam
         self._eta = eta
@@ -61,7 +62,7 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
         # self._batch_s = batch_size
 
         # self._weights_initializer = weights_initializer or init_ops.RandomUniform(-1, 1) #NOTE: NOT USED
-        self._activation = activation or tf.nn.relu
+        self._activation = activation 
 
         self.hidden_states = []
 
@@ -145,7 +146,7 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
 
             state_sum = tf.zeros([self.batch_size,self._num_units])
             t = len(self.hidden_states)
-            for tau, old_hidden in enumerate(reversed(self.hidden_states)):
+            for tau, old_hidden in enumerate(self.hidden_states):
                 #scal_prod = tf.reshape(tf.matmul(tf.transpose(old_hidden),h_0),[1, self._num_units, self._num_units])
                 #print(scal_prod)
                 #state_sum += tf.matmul(tf.reshape(self._lam**(t-tau-1) * old_hidden,[1,-1,self._num_units]),scal_prod) 

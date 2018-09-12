@@ -144,6 +144,9 @@ def main(_):
     if not FLAGS.path:
         raise ValueError("Please specify the path to the save location you want to use")
 
+    if not os.path.exists(FLAGS.path):
+        os.makedirs(FLAGS.path)
+
     if FLAGS.dataset == 'mnist':
         record_mnist()
     elif FLAGS.dataset == 'associative-retrieval':
