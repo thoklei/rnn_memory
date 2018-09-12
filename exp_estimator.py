@@ -78,7 +78,8 @@ def main(_):
 
     eval_result = classifier.evaluate(
         input_fn=lambda:data_provider.test_input_fn(FLAGS.data_path, FLAGS.task, config),
-        name="test"
+        name="test",
+        steps=100
     )
     
     print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
