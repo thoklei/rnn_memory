@@ -11,7 +11,7 @@ class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):#tf.nn.rnn_cell.BasicRNNCell):
         super(Autoconceptor, self).__init__(num_units, activation)
         self.num_units = num_units
         self.c_alpha = alpha
-        self.c_lambda = c_lambda
+        self.c_lambda = lam
         self.batchsize = batchsize
         self.conceptor_built = False
         self.layer_norm = layer_norm
