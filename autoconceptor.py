@@ -3,7 +3,6 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.ops import init_ops
 from tensorflow.contrib.layers.python.layers import layers
-np.set_printoptions(threshold=np.inf)
 
 class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):#tf.nn.rnn_cell.BasicRNNCell):
 

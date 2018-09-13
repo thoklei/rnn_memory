@@ -4,7 +4,10 @@ from __future__ import print_function
 
 import os
 import tensorflow as tf
-import data_provider
+if(tf.__version__ == '1.4.0'):
+    import old_data_provider as d_prov
+else:
+    import data_provider as d_prov
 from configs import *
 import model_functions 
 
@@ -71,19 +74,19 @@ def main(_):
     for epoch in range(config.num_epochs):
         # Train the Model.
         classifier.train(
-            input_fn=lambda:data_provider.train_input_fn(FLAGS.data_path, FLAGS.task, config),
+            input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, FLAGS.task, config),
             steps=500) #500*128 = 64000 = number of training samples
 
         # Evaluate the model.
         eval_result = classifier.evaluate(
-            input_fn=lambda:data_provider.validation_input_fn(FLAGS.data_path, FLAGS.task, config),
+            input_fn=lambda:d_prov.validation_input_fn(FLAGS.data_path, FLAGS.task, config),
             steps=100,
             name="validation")
 
         print('\nValidation set accuracy after epoch {}: {accuracy:0.3f}\n'.format(epoch+1,**eval_result))
 
     eval_result = classifier.evaluate(
-        input_fn=lambda:data_provider.test_input_fn(FLAGS.data_path, FLAGS.task, config),
+        input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, FLAGS.task, config),
         name="test"
     )
     
