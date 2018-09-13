@@ -29,7 +29,7 @@ def get_rnn_cell(cell_type, config):
                                      norm_shift = config.norm_shift,
                                      activation = config.activation,
                                      batch_size = config.batchsize, 
-                                     num_inner_loops=config.fw_inner_loops)
+                                     num_inner_loops = config.fw_inner_loops)
     elif(cell_type == 'autoconceptor'):
         cell = Autoconceptor(num_units = config.layer_dim, 
                              alpha = config.c_alpha, 

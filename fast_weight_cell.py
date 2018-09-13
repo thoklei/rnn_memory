@@ -144,8 +144,9 @@ class FastWeightCell(rnn_cell_impl.RNNCell):
         h_A = tf.reshape(tf.matmul(tf.reshape(h_0, [-1,1,self._num_units]), A), [-1, self._num_units])
         # h_pre = (linear + math_ops.matmul(h_0, A))
         h_pre = linear + h_A
-        h_ln = self._norm(h_pre)
-        h = self._activation(h_ln)
+        if(self._layer_norm):
+            h_pre = self._norm(h_pre)
+        h = self._activation(h_pre)
 
         # update matrix
         A = self._matrix_update(A, h)
