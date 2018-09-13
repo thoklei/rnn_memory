@@ -32,6 +32,7 @@ class MNIST_784_Config(DefaultConfig):
     input_length = 784
     input_dim = 1
     output_dim = 10
+    batchsize = 64
 
 
 class MNIST_28_Config(DefaultConfig):

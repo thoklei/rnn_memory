@@ -112,7 +112,7 @@ def record_mnist():
       print('Writing', filename)
       with tf.python_io.TFRecordWriter(filename) as writer:
         for index in range(num_examples):
-          image_raw = (images[index]/255.0-0.5).tostring()
+          image_raw = images[index].tostring()
           raw_label = labels[index].tostring()
           example = tf.train.Example(
               features=tf.train.Features(

@@ -5,8 +5,10 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 if(tf.__version__ == '1.4.0'):
+    print("using old data provider")
     import old_data_provider as d_prov
 else:
+    print("using new data provider")
     import data_provider as d_prov
 from configs import *
 import model_functions 
