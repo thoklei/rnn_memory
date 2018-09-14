@@ -29,7 +29,7 @@ def read_dataset(path, mode, batch_size, repeat, seq_length, seq_width, datatype
         parsed_features = tf.parse_single_example(example_proto, features)
 
         # NOTE: the reason that this will be an int32 is weird and hidden;
-        # retrieve sequence
+        # retrieve  sequence
         seq = tf.decode_raw(parsed_features["raw_sequence"], datatype)
         seq.set_shape(seq_length*seq_width)
         seq = tf.reshape(seq, [seq_length, seq_width])
@@ -45,12 +45,12 @@ def read_dataset(path, mode, batch_size, repeat, seq_length, seq_width, datatype
     training_path = os.path.join(path, mode+'.tfrecords')
     training_dataset = tf.data.TFRecordDataset(training_path)
     training_dataset = training_dataset.map(_parse_function, num_parallel_calls=4)
-    training_dataset = training_dataset.shuffle(10000)
+    training_dataset = training_dataset.shuffle(100)
     #training_dataset = training_dataset.apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
     #training_dataset = training_dataset.batch(batch_size, drop_remainder=True)
     #if(repeat):
     training_dataset = training_dataset.repeat()
-    training_dataset = training_dataset.batch(batch_size)
+    training_dataset = training_dataset.apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
     training_dataset = training_dataset.prefetch(1)
 
     return training_dataset.make_one_shot_iterator().get_next()

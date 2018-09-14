@@ -47,14 +47,12 @@ def classification_model_fn(features, labels, mode, params):
     """Model Function"""
 
     config = params['config']
-
-    inp = tf.unstack(tf.cast(features,tf.float32), axis=1)
+    #inp = tf.unstack(tf.cast(features,tf.float32), axis=1)
 
     cell = get_rnn_cell(params['model'],config)
-
-    outputs, _ = tf.nn.static_rnn(cell, inp, dtype=tf.float32)
-
-    logits = tf.layers.dense(outputs[-1], config.output_dim, activation=None)
+    outputs, _ = tf.nn.dynamic_rnn(cell, features, dtype=tf.float32)
+    out = tf.reshape(outputs[:,-1,:],[config.batchsize,config.layer_dim])
+    logits = tf.layers.dense(out, config.output_dim, activation=None)
 
     #logits += 1e-8 # to prevent NaN loss during training
 
