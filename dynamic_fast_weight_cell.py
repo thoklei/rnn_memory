@@ -10,15 +10,11 @@ from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import array_ops
 from tensorflow.python.ops import nn_ops
 from tensorflow.python.ops import variable_scope as vs
-#from tensorflow.contrib.rnn.python.ops.core_rnn_cell import _linear
-
-#from tensorflow.contrib.rnn.python.ops.core_rnn_cell import _linear
 
 from tensorflow.python.util import nest
 
 _BIAS_VARIABLE_NAME = "bias"
 _WEIGHTS_VARIABLE_NAME = "kernel"
-
 
 def _linear(args,
             output_size,
@@ -84,36 +80,39 @@ def _linear(args,
 
 class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
     """ 
+    ONLY WORKS FOR static_rnn DO NOT USE WITH mode=dynamic
+
     A FastWeight Cell following Ba et al (2016)
+    This cell calculates the weight matrix dynamically as the weighted
+    scalar product over old hidden states to save memory.
     """
 
     def __init__(self, num_units, lam, eta,
                  layer_norm=False,
                  norm_gain=1,
                  norm_shift=1,
-                 weights_initializer=None,
                  activation=tf.nn.relu,
-                 batch_size=128,
+                 batch_size,
                  num_inner_loops=1,
-                 sequence_length=9,
+                 sequence_length,
                  reuse=None):
-        """ Initialize parameters for a FastWeightCell
+        """ 
+        Initialize parameters for a FastWeightCell
 
-        Args:
-            num_units: int, Number of units in the recurrent network
-            lam: float value, decay rate of dynamic fast weight matrix
-            eta: float value, update rate of dynamic fast weight matrix
-            layer_norm: bool, switches layer_norm operation, Default: `False`
-            norm_gain: (Required if layer_norm=True) float value, gain/var of layer norm
-            norm_shift: (Required if layer_norm=True) float value, shift/mean of layer norm
-            activation: (optional) specify the activation function, Default: `ReLU`
-            reuse: (optional) [cp from rnn_cell_impl] bool, describes whether to reuse
-              variables in existing scope. If not `True`, and the existing scope already
-              has the given variables, error is raised.
+        num_units       = int, Number of units in the recurrent network
+        lam             = float value, decay rate of dynamic fast weight matrix
+        eta             = float value, update rate of dynamic fast weight matrix
+        layer_norm      = bool, switches layer_norm operation, Default: `False`
+        norm_gain       = (Required if layer_norm=True) float value, gain/var of layer norm
+        norm_shift      = (Required if layer_norm=True) float value, shift/mean of layer norm
+        activation      = (optional) specify the activation function, Default: `ReLU`
+        batch_size      = size of the training batches, needed to allocate memory properly
+        num_inner_loops = the number of inner loops to transform hs to hs+1 (only 1 works properly)
+        sequence_length = the length of input sequences, required to allocate memory
+        reuse           = whether to reuse variables in existing scope. 
 
         """
-        super(DynamicFastWeightCell, self).__init__(
-            num_units, activation, reuse)
+        super(DynamicFastWeightCell, self).__init__(num_units, activation, reuse)
         self._num_units = num_units
         self._lam = lam
         self._eta = eta
@@ -129,8 +128,12 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
         self.hidden_states = []
 
     def _norm(self, inp, scope="layer_norm"):
-        """
+        """ 
+        Performs layer normalization on the hidden state.
 
+        inp = the input to be normalized
+        
+        Returns inp normalized by learned parameters gamma and beta
         """
         shape = inp.get_shape()[-1:]
         gamma_init = init_ops.constant_initializer(self._g)
@@ -142,7 +145,8 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
         return normalized
 
     def call(self, inputs, h):
-        """ Run one step of a __BLANK__Cell
+        """ 
+        Run one step of a DynamicFastWeight-Cell
 
         Args:
             inputs: `2-D` tensor with shape `[batch_size x input_size]`
@@ -152,8 +156,7 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
         if(len(self.hidden_states) == self.sequence_length):
             self.hidden_states = []
 
-        with tf.variable_scope("slow_weights"):
-            linear = _linear([inputs, h], self._num_units, True)
+        linear = _linear([inputs, h], self._num_units, True)
         h_s = self._activation(linear)
 
         # inner loop to update hs to hs+1

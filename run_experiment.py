@@ -29,7 +29,9 @@ flags.DEFINE_string("model", "fast_weights",
     "Which type of Model to use. Options are: rnn, lstm, irnn, fast_weights, conceptor")
 flags.DEFINE_string("task", "mnist_28",
     "Which task to solve. Options are: mnist_28, mnist_784, associative_retrieval")
-
+flags.DEFINE_string("mode", "static",
+    "Which RNN unrolling mechanism to choose. Options are: static, dynamic")
+    
 FLAGS = flags.FLAGS
 
 def get_config():
@@ -47,13 +49,14 @@ def get_config():
     return config
 
 
-
-
-def get_model_fn(task):
+def get_model_fn(task,mode):
     if(task == "addition"):
         return model_functions.scalar_model_fn
     else:
-        return model_functions.classification_model_fn
+        if(mode == "static"):
+            return model_functions.static_classification_model_fn
+        elif(mode == "dynamic"):
+            return model_functions.dynamic_classification_model_fn
 
 
 def main(_):
@@ -67,7 +70,7 @@ def main(_):
         print(config, file=text_file)
 
     classifier = tf.estimator.Estimator(
-        model_fn=get_model_fn(FLAGS.task),
+        model_fn=get_model_fn(FLAGS.task, FLAGS.mode),
         model_dir=FLAGS.save_path,
         params={
             'model': FLAGS.model,
@@ -79,7 +82,7 @@ def main(_):
             input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, FLAGS.task, config),
             steps=500) #500*128 = 64000 = number of training samples
 
-        # Evaluate the model.
+        #Evaluate the model.
         eval_result = classifier.evaluate(
             input_fn=lambda:d_prov.validation_input_fn(FLAGS.data_path, FLAGS.task, config),
             steps=100,

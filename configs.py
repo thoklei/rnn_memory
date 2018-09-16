@@ -1,56 +1,72 @@
 import tensorflow as tf
 
 class DefaultConfig(object):
-    num_epochs = 200 # should be 100.000 steps 
-    batchsize = 128
-    layer_dim = 50
-    #learning_rate = 1e-4
-    #max_grad_norm = 5.0
-    fw_lambda = 0.9
-    fw_eta = 0.5
-    fw_inner_loops = 1
-    c_alpha = 40
-    c_lambda = 0.01
-    layer_norm = True
-    #init_scale = 0.1
-    norm_gain =  1
-    norm_shift = 1
-    optimizer = tf.train.AdamOptimizer()
-    activation = staticmethod(tf.nn.tanh)
 
-    clip_gradients = False
+    fw_activation = staticmethod(tf.nn.tanh)
+    c_activation = staticmethod(tf.nn.tanh)
+
+    def __init__(self):
+        self.num_epochs = 40 #200 should be 100.000 steps 
+        self.batchsize = 128
+        self.layer_dim = 50
+
+        self.fw_layer_norm = True
+        self.fw_lambda = 0.9
+        self.fw_eta = 0.5
+        self.fw_inner_loops = 1
+        
+        self.c_layer_norm = False
+        self.c_alpha = 12
+        self.c_lambda = 0.065
+
+        self.norm_gain =  1
+        self.norm_shift = 1
+        self.optimizer = tf.train.AdamOptimizer()
+        self.clip_gradients = False
 
     def __repr__(self):
-        """
-        Don't give me that look, if I have to use Python at least let me do this
-        """
-        return "\n".join([str(key)+": "+str(value) for key, value in DefaultConfig.__dict__.items() if not key.startswith('__') and not callable(key)])
+        return "\n".join([str(key)+": "+str(value) for key, value in self.__dict__.items() if not key.startswith('__') and not callable(key)])
     
     
 
 class MNIST_784_Config(DefaultConfig):
-    input_length = 784
-    input_dim = 1
-    output_dim = 10
-    batchsize = 64
+    
+    def __init__(self):
+        super(MNIST_784_Config,self).__init__()
+        self.input_length = 784
+        self.input_dim = 1
+        self.output_dim = 10
+        self.batchsize = 64
+
+        self.c_alpha = 40
+        self.c_lambda = 0.01
 
 
 class MNIST_28_Config(DefaultConfig):
-    layer_dim = 100
-    input_length = 28
-    input_dim = 28
-    output_dim = 10
+
+    def __init__(self):
+        super(MNIST_28_Config,self).__init__()
+        self.layer_dim = 100
+        self.input_length = 28
+        self.input_dim = 28
+        self.output_dim = 10
 
 
 class Default_AR_Config(DefaultConfig):
-    input_length = 9
-    input_dim = 26+10+1
-    output_dim = 26+10+1
+
+    def __init__(self):
+        super(Default_AR_Config,self).__init__()
+        self.input_length = 9
+        self.input_dim = 26+10+1
+        self.output_dim = 26+10+1
 
 
 class Default_Addition_Config(DefaultConfig):
-    input_length = 100
-    input_dim = 2
-    output_dim = 1
+
+    def __init__(self):
+        super(Default_Addition_Config,self).__init__()
+        self.input_length = 100
+        self.input_dim = 2
+        self.output_dim = 1
 
 

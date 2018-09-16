@@ -47,7 +47,9 @@ def read_dataset(path, mode, batch_size, repeat, seq_length, seq_width, datatype
     training_dataset = training_dataset.map(_parse_function)
     training_dataset = training_dataset.shuffle(100)
     training_dataset = training_dataset.batch(batch_size, drop_remainder=True)
-    training_dataset = training_dataset.repeat()
+
+    if(repeat):
+        training_dataset = training_dataset.repeat()
 
     training_dataset = training_dataset.prefetch(1)
     return training_dataset 

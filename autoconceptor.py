@@ -1,71 +1,131 @@
-
 import numpy as np
+import collections
 import tensorflow as tf
 from tensorflow.python.ops import init_ops
 from tensorflow.contrib.layers.python.layers import layers
+from tensorflow.python.ops.rnn_cell_impl import LayerRNNCell
+from tensorflow.python.layers import base as base_layer
+from tensorflow.python.ops.rnn_cell_impl import _concat
+from tensorflow.python.ops import array_ops
+from tensorflow.python.framework import ops
 
-class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):#tf.nn.rnn_cell.BasicRNNCell):
 
-    def __init__(self, num_units, alpha, lam, batchsize, activation=tf.nn.tanh, layer_norm=False):
-        super(Autoconceptor, self).__init__(num_units, activation)
+# following the desing of LSTM state tuples
+_DynStateTuple = collections.namedtuple("DynStateTyple", ["C", "h"])
+
+class DynStateTuple(_DynStateTuple):
+    """Tuple used by RNN Models with conceptor matrices.
+
+    Stores two elements: `(C, h)` in that order
+        where C is the conceptor matrix
+        and   h is the state of the RNN
+
+    adapted from LSTMStateTuple in tensorflow/python/obs/rnn_cell_impl.py
+    """
+
+    __slots__ = ()
+
+    @property
+    def dtype(self):
+        (C, h) = self
+        if C.dtype != h.dtype:
+            raise TypeError("Matrix and internal state should agree on type: %s vs %s" %
+                            (str(C.dtype), str(h.dtype)))
+        return C.dtype
+
+
+class Autoconceptor(LayerRNNCell):
+    """
+    Autoconceptor, adapted from Jaeger.
+    """
+
+    def __init__(self, num_units, alpha, lam, batchsize, activation=tf.nn.tanh, reuse=None, layer_norm=False):
+        """
+        Args:
+        num_units  = hidden state size of RNN cell
+        alpha      = alpha for autoconceptor, used to calculate aperture as alpha**-2
+        lam        = lambda for autoconceptor, scales conceptor-matrix
+        batchsize  = number of training examples per batch (we need this to allocate memory properly)
+        activation = which nonlinearity to use (tanh works best, relu only with layer norm)
+        reuse      = whether to reuse variables, just leave this as None
+        layer_norm = whether to apply layer normalization, not necessary if using tanh
+        """
+        super(Autoconceptor, self).__init__(_reuse=reuse, name="autoconceptor_cell", dtype=tf.float32)
         self.num_units = num_units
-        self.c_alpha = alpha
-        self.c_lambda = lam
+        self.c_lambda = tf.constant(lam, name="lambda")
         self.batchsize = batchsize
         self.conceptor_built = False
         self.layer_norm = layer_norm
+        self._activation = activation
+        self.aperture_fact = tf.constant(alpha**(-2), name="aperture")
+        self._state_size = self.zero_state(batchsize)
+
+        #no idea what this does, to be honest
+        self.input_spec = base_layer.InputSpec(ndim=2)
+
+    # these two properties are necessary to pass assert_like_rnn_cell test in static_rnn and dynamic_rnn
+    @property
+    def state_size(self):
+        
+        return  self._state_size
+
+    @property
+    def output_size(self):
+        return self.num_units
+
+    def zero_state(self, batch_size, dtype=tf.float32):
+        """
+        Returns the zero state for the autoconceptor cell.
+
+        batch_size = the number of elements per batch
+        dtype      = the dtype to be used, stick with tf.float32
+
+        The zero state is a DynStateTuple consisting of a C-matrix filled with zeros,
+        shape [batchsize, num_units, num_units] and a zero-filled hidden state of
+        shape [batchsize, num_units]
+        """
+        return DynStateTuple(C=tf.zeros([batch_size, self.num_units, self.num_units], dtype=tf.float32),
+                             h=tf.zeros([batch_size, self.num_units], dtype=tf.float32))
 
 
     def build(self, inputs_shape):
+        """
+        Builds the cell by defining variables. 
+        Overrides method from super-class.
+        """
         if inputs_shape[1].value is None:
             raise ValueError("Expected inputs.shape[-1] to be known, saw shape: %s"
                            % inputs_shape)
         input_dim = inputs_shape[1].value
-        with tf.variable_scope('autoconceptor_vars'):
 
-            self.W_in = tf.get_variable(
-                "W_in",
-                shape=[input_dim, self.num_units],
-                initializer=init_ops.random_normal_initializer(),
-                dtype=tf.float32)
+        self.W_in = self.add_variable(
+            "W_in",
+            shape=[input_dim, self.num_units],
+            initializer=init_ops.random_normal_initializer(),
+            dtype=tf.float32)
 
-            self.b_in = tf.get_variable(
-                "b_in",
-                shape=[self.num_units],
-                initializer= init_ops.zeros_initializer(),
-                dtype=tf.float32)
+        self.b_in = self.add_variable(
+            "b_in",
+            shape=[self.num_units],
+            initializer= init_ops.zeros_initializer(),
+            dtype=tf.float32)
 
-            self.W = tf.get_variable(
-                "W",
-                shape=[self.num_units, self.num_units],
-                initializer=init_ops.constant_initializer(0.05 * np.identity(self.num_units)),
-                dtype=tf.float32)
+        self.W = self.add_variable(
+            "W",
+            shape=[self.num_units, self.num_units],
+            initializer=init_ops.constant_initializer(0.05 * np.identity(self.num_units)),
+            dtype=tf.float32)
 
-
-            self.gain = tf.get_variable(
-                'layer-norm-gain',
-                shape=[self.num_units],
-                initializer=init_ops.constant_initializer(np.ones([self.num_units])),
-                dtype=tf.float32)
-
-            self.bias = tf.get_variable(
-                'layer-norm-bias',
-                shape=[self.num_units],
-                initializer=init_ops.constant_initializer(np.zeros([self.num_units])),
-                dtype=tf.float32)
-
-
-    def build_conceptor(self, batchsize):
-        with tf.variable_scope('autoconceptor_vars'):
-            self.C = tf.zeros([batchsize, self.num_units, self.num_units],
-                dtype=tf.float32, name='weights-rnn-dynamics')
-
-        self.conceptor_built = True
+        self.built = True
 
     
     def _norm(self, inp, scope="layer_norm"):
-        """ TODO
+        """ 
+        Performs layer normalization on the hidden state.
 
+        inp = the input to be normalized
+        
+        Returns inp normalized by learned parameters gamma and beta
         """
         shape = inp.get_shape()[-1:]
         gamma_init = init_ops.constant_initializer(1)
@@ -77,57 +137,36 @@ class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):#tf.nn.rnn_cell.BasicRNNCell):
         return normalized
 
 
-    def call(self, inputs, state):
+    def call(self, inputs, h):
         """
-        batch x input_length x input_dim
+        Performs one step of this Autoconceptor Cell.
+
+        inputs = the input batch, shape [batchsize, input_dim]
+        h      = the DynStateTuple containing the preceding state
+
+        Returns output, state
+            where output = output at this time step
+                  state  = new hidden state and C-matrix as DynStateTuple
         """
-
-        if(not self.conceptor_built):
-            self.build_conceptor(self.batchsize)
-
-        # #with tf.variable_scope('layer_norm'):
-        # mu = tf.reduce_mean(state, reduction_indices=0)
-        # sigma = tf.sqrt(tf.reduce_mean(tf.square(state - mu),
-        #     reduction_indices=0))
-        # state = tf.div(self.gain * (state - mu), sigma) + self.bias
+        C, state = h
 
         state = self._activation(
-            (inputs @ self.W_in + self.b_in) + (state @ self.W) 
+            (tf.matmul(inputs, self.W_in) + self.b_in) + (tf.matmul(state, self.W))
         )
-        #state = tf.Print(state, [state])
+
         if(self.layer_norm):
             state = self._norm(state)
         
         state = tf.reshape(state, [-1, 1, self.num_units])
 
-        # THIS DOWN HERE NEEDS TO BE WORKED OUT!
-        # ALSO: try original (1/L) conceptor ->
-        # TRY: Adding Wh + Ch
-        # ...
-        aperture_fact = self.c_alpha ** (-2)
-
         # Std.Version
-        self.C = self.C + self.c_lambda * ( tf.transpose((state - state @ self.C), [0,2,1]) @ state \
-            - aperture_fact * self.C )
-
-        state = state @ self.C
-
-        #state = tf.Print(state, [state])
-
-        # with tf.variable_scope('layer_norm'):
-        #     mu = tf.reduce_mean(h, reduction_indices=0)
-        #     sigma = tf.sqrt(tf.reduce_mean(tf.square(h - mu),
-        #         reduction_indices=0))
-        #     h = tf.div(gain * (h - mu), sigma) + bias
-        #
-        # # non-linearity
-        # h = tf.nn.relu(h)
-
+        C = C + self.c_lambda * ( tf.matmul(tf.transpose((state - tf.matmul(state, C)), [0,2,1]), state) - tf.scalar_mul(self.aperture_fact,C) )
+        
+        state = tf.matmul(state, C)
 
         # Reshapes necessary for std. matrix multiplication, where one matrix
         # for all elements in batch vs. fast-weights matrix -> different for every
         # element!
         state = tf.reshape(state, [-1, self.num_units])
 
-
-        return state, state
+        return state, DynStateTuple(C, state)

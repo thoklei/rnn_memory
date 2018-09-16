@@ -120,20 +120,19 @@ def _zero_state_tuple(state_size, batch_size, dtype):
     return DynStateTuple(*[get_state_shape(s) for s in state_size])
 
 class FastWeightCell(rnn_cell_impl.RNNCell):
-    """ A FastWeight Cell following Ba et al (2016)
+    """ 
+    A FastWeight Cell following Ba et al (2016)
 
-    TODO: This should overwrite the zero_state function of RNNCell to be applicable
-    to the fast-weight matrix as well. //problem_solved.
     """
 
     def __init__(self, num_units, lam, eta,
                  layer_norm=False,
                  norm_gain=1,
                  norm_shift=1,
-                 weights_initializer=None,
                  activation=tf.nn.relu,
                  reuse=None):
-        """ Initialize parameters for a FastWeightCell
+        """ 
+        Initialize parameters for a FastWeightCell
 
         Args:
             num_units: int, Number of units in the recurrent network
@@ -154,39 +153,29 @@ class FastWeightCell(rnn_cell_impl.RNNCell):
         self._eta = eta
 
         self._layer_norm = layer_norm
-        # if self._layer_norm:
-        #     if not (norm_gain or norm_shift):
-        #         raise NameError("If Layer-norm is used, initial norm_gain and \
-        #                          norm_shift have to be defined")
         self._g = norm_gain
         self._b = norm_shift
 
-        # I need the batch size for A matrix in the model!
-        # self._batch_s = batch_size
-
-        # self._weights_initializer = weights_initializer or init_ops.RandomUniform(-1, 1) #NOTE: NOT USED
         self._activation = activation
 
         self._state_size = DynStateTuple([num_units, num_units], num_units)
 
-
+    # these two properties are required to pass assert_like_rnn_cell test
     @property
     def state_size(self):
-        """ TODO
-
-        """
         return self._state_size
 
     @property
     def output_size(self):
-        """ TODO
-
-        """
         return  self._num_units
 
     def _norm(self, inp, scope="layer_norm"):
-        """ TODO
+        """ 
+        Performs layer normalization on the hidden state.
 
+        inp = the input to be normalized
+        
+        Returns inp normalized by learned parameters gamma and beta
         """
         shape = inp.get_shape()[-1:]
         gamma_init = init_ops.constant_initializer(self._g)
@@ -198,7 +187,8 @@ class FastWeightCell(rnn_cell_impl.RNNCell):
         return normalized
 
     def call(self, inputs, state):
-        """ Run one step of a __BLANK__Cell
+        """ 
+        Run one step of a FastWeight Cell
 
         Args:
             inputs: `2-D` tensor with shape `[batch_size x input_size]`
@@ -206,13 +196,11 @@ class FastWeightCell(rnn_cell_impl.RNNCell):
         """
         A, h = state
         # update network
-        #initializer = tf.random_normal_initializer(stddev=2/input_shape)
         linear = _linear([inputs, h], self._num_units, True) #rnn_cell_impl._linear # shape [?,50]
         # since A is [BATCH x N x N], i.e. for every batch a different A is used,
         # we need to reshape h to work with that
         h_0 = self._activation(linear)
         h_A = tf.reshape(tf.matmul(tf.reshape(h_0, [-1,1,self._num_units]), A), [-1, self._num_units])
-        # h_pre = (linear + math_ops.matmul(h_0, A))
         h_pre = linear + h_A
         if(self._layer_norm):
             h_pre = self._norm(h_pre)
@@ -244,7 +232,7 @@ class FastWeightCell(rnn_cell_impl.RNNCell):
                 self._eta * math_ops.matmul(array_ops.transpose(h_reshape, [0,2,1]), h_reshape)
         return A
 
-    def zero_state(self, batch_size, dtype):
+    def zero_state(self, batch_size, dtype=tf.float32):
         """Return zero-filled state tensors, including fast-weight matrix
 
         Overloads parent method zero_state inherited from rnn_cell_impl.RNNCell
