@@ -87,14 +87,13 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
     scalar product over old hidden states to save memory.
     """
 
-    def __init__(self, num_units, lam, eta,
+    def __init__(self, num_units, lam, eta, batch_size,
+                 sequence_length,
                  layer_norm=False,
                  norm_gain=1,
                  norm_shift=1,
                  activation=tf.nn.relu,
-                 batch_size,
                  num_inner_loops=1,
-                 sequence_length,
                  reuse=None):
         """ 
         Initialize parameters for a FastWeightCell

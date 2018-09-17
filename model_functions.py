@@ -27,6 +27,7 @@ def get_rnn_cell(cell_type, config):
                               activation = config.fw_activation)
     elif(cell_type == 'dynamic_fast_weights'):
         cell = DynamicFastWeightCell(num_units = config.layer_dim, 
+                                     sequence_length = config.input_length,
                                      lam = config.fw_lambda, 
                                      eta = config.fw_eta, 
                                      layer_norm = config.fw_layer_norm, 
@@ -75,6 +76,7 @@ def static_classification_model_fn(features, labels, mode, params):
                                    name='acc_op')
     metrics = {'accuracy': accuracy}
     tf.summary.scalar('accuracy', accuracy[1])
+    summary_op = tf.summary.merge_all()
 
     if mode == tf.estimator.ModeKeys.EVAL:
         return tf.estimator.EstimatorSpec(

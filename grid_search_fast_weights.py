@@ -6,6 +6,7 @@ import os
 import tensorflow as tf
 import numpy as np
 import shutil
+import glob
 from configs import *
 import model_functions 
 
@@ -36,6 +37,8 @@ flags.DEFINE_string("task", "associative_retrieval",
     "Which task to solve. Options are: mnist_28, mnist_784, associative_retrieval")
 flags.DEFINE_string("mode", "static",
     "Which RNN unrolling mechanism to choose. Options are: static, dynamic")
+flags.DEFINE_string("summary_path", None,
+"Where to store the summaries of the run (not deleted afterwards)")
 
 FLAGS = flags.FLAGS
 
@@ -68,7 +71,7 @@ def main(_):
 
     config = get_config()
 
-    config.num_epochs = 20 # change this for mnist
+    config.num_epochs = 30# change this for mnist
     num_runs = 5
 
     fw_lambdas = [0.8,0.85,0.875,0.9,0.925,0.95]
@@ -86,8 +89,8 @@ def main(_):
 
                 print("Starting run {} of {} for lambda {} and eta {}".format(run+1, num_runs, lam, eta))
 
-                model_dir = os.path.join(FLAGS.save_path, "testrun")
-
+                model_dir = os.path.join(FLAGS.save_path,"{}_{}_{}".format(run,lam, eta))
+                
                 classifier = tf.estimator.Estimator(
                     model_fn=get_model_fn(FLAGS.task, FLAGS.mode),
                     model_dir=model_dir,
@@ -96,6 +99,8 @@ def main(_):
                         'config': config
                     })
 
+                summary_dir = os.path.join(FLAGS.summary_path,"{}_{}".format(lam,eta),"run_{}".format(run))
+             
                 for _ in range(config.num_epochs):
                     # Train the Model.
                     classifier.train(
@@ -108,6 +113,12 @@ def main(_):
                 )
         
                 res_list.append(eval_result['accuracy'])
+
+                event_file = glob.glob(os.path.join(model_dir,"events.out.tfevents*"))
+                if not os.path.exists(summary_dir):
+                    os.makedirs(summary_dir)
+                print(event_file)
+                shutil.copy(event_file[0], os.path.join(summary_dir,"events.out.tfevents"))
 
                 shutil.rmtree(model_dir, ignore_errors=True)
 

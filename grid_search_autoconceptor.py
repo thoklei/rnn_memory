@@ -8,7 +8,7 @@ import numpy as np
 import shutil
 from configs import *
 import model_functions 
-
+imoprt glob
 
 if(tf.__version__ == '1.4.0'):
     print("using old data provider")
@@ -69,9 +69,7 @@ def main(_):
     config = get_config()
 
     config.num_epochs = 15 # change this for mnist
-    num_runs = 5
-    self.c_alpha = 12
-        self.c_lambda = 0.065
+    num_runs = 2
 
     c_lambdas = [0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1]
     c_alphas = [0.5,5,10,15,20,30,50,75,100,150]
@@ -86,10 +84,10 @@ def main(_):
 
             for run in range(num_runs):
 
-                print("Starting run {} of {} for lambda {} and eta {}".format(run+1, num_runs, lam, eta))
+                print("Starting run {} of {} for lambda {} and alpha {}".format(run+1, num_runs, lam, alpha))
 
-                model_dir = os.path.join(FLAGS.save_path, "testrun")
-
+                model_dir = os.path.join(FLAGS.save_path,"{}_{}_{}".format(run,lam, alpha))
+                
                 classifier = tf.estimator.Estimator(
                     model_fn=get_model_fn(FLAGS.task, FLAGS.mode),
                     model_dir=model_dir,
@@ -98,6 +96,8 @@ def main(_):
                         'config': config
                     })
 
+                summary_dir = os.path.join(FLAGS.summary_path,"{}_{}".format(lam,alpha),"run_{}".format(run))
+             
                 for _ in range(config.num_epochs):
                     # Train the Model.
                     classifier.train(
@@ -110,6 +110,12 @@ def main(_):
                 )
         
                 res_list.append(eval_result['accuracy'])
+
+                event_file = glob.glob(os.path.join(model_dir,"events.out.tfevents*"))
+                if not os.path.exists(summary_dir):
+                    os.makedirs(summary_dir)
+                print(event_file)
+                shutil.copy(event_file[0], os.path.join(summary_dir,"events.out.tfevents"))
 
                 shutil.rmtree(model_dir, ignore_errors=True)
 
