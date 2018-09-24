@@ -41,6 +41,9 @@ class MNIST_784_Config(DefaultConfig):
         self.c_alpha = 40
         self.c_lambda = 0.01
 
+        self.fw_lambda = 0.9
+        self.fw_eta = 0.5
+
 
 class MNIST_28_Config(DefaultConfig):
 
