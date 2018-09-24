@@ -94,7 +94,9 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
                  norm_shift=1,
                  activation=tf.nn.relu,
                  num_inner_loops=1,
-                 reuse=None):
+                 reuse=tf.AUTO_REUSE,
+                 scal_prod_weight=100
+                 ):
         """ 
         Initialize parameters for a FastWeightCell
 
@@ -125,6 +127,8 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
         self._activation = activation
 
         self.hidden_states = []
+        self.scal_prod_weight = scal_prod_weight
+        #self.scal_prod_weight = tf.get_variable(name="scal_prod_weight",shape=(),initializer=init_ops.constant_initializer(scal_prod_weight))
 
     def _norm(self, inp, scope="layer_norm"):
         """ 
@@ -165,11 +169,17 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
 
             t = len(self.hidden_states)
             for tau, old_hidden in enumerate(self.hidden_states):
-                scal_prod = tf.reduce_sum(tf.multiply(tf.matmul(old_hidden, tf.transpose(
-                    h_s)), tf.diag(np.ones([self.batch_size], dtype=np.float32))), 1)
+                norm_old_hidden = old_hidden / tf.norm(old_hidden,keepdims=True,axis=1)
+                norm_h_s = h_s / tf.norm(h_s,keepdims=True,axis=1)
+                #print("norm_oh:",norm_old_hidden)
+                #print("norm_hs:",norm_h_s) # should both be 128x50
+                scal_prod = tf.reduce_sum(tf.multiply(tf.matmul(norm_old_hidden, tf.transpose(
+                    norm_h_s)), tf.diag(np.ones([self.batch_size], dtype=np.float32))), 1)
+                #scal_prod = tf.Print(scal_prod, [scal_prod],"scal_prod:")
                 state_sum += tf.multiply(self._lam**(t-tau-1) * old_hidden,
-                                         tf.reshape(scal_prod, [self.batch_size, 1]))
-
+                                          tf.reshape(tf.multiply(tf.norm(old_hidden,axis=1)*tf.norm(h_s,axis=1),scal_prod), [self.batch_size, 1]))
+                #state_sum = tf.Print(state_sum, [state_sum],message="state sum:")
+                #tf.norm(old_hidden,axis=1)*tf.norm(h_s,axis=1)
             h_A = self._eta * tf.reshape(state_sum, [-1, self._num_units])
 
             h_pre = linear + h_A
@@ -179,6 +189,6 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
 
             h_s = self._activation(h_pre)
 
-        self.hidden_states.append(h_s)
+        self.hidden_states.append(h_s)#(tf.scalar_mul(self.scal_prod_weight,tf.norm(h_s,keepdims=True)))
 
         return h_s, h_s

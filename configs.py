@@ -6,13 +6,13 @@ class DefaultConfig(object):
     c_activation = staticmethod(tf.nn.tanh)
 
     def __init__(self):
-        self.num_epochs = 40 #200 should be 100.000 steps 
+        self.num_epochs = 200 #200 = 100.000 steps 
         self.batchsize = 128
         self.layer_dim = 50
 
         self.fw_layer_norm = True
-        self.fw_lambda = 0.9
-        self.fw_eta = 0.5
+        self.fw_lambda = 1.1
+        self.fw_eta = 0.4
         self.fw_inner_loops = 1
         
         self.c_layer_norm = False

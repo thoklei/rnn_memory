@@ -13,10 +13,14 @@ import numpy as np
 def get_rnn_cell(cell_type, config):
     if(cell_type == 'rnn'):
         cell = tf.contrib.rnn.BasicRNNCell(config.layer_dim)
+    elif(cell_type == 'multi_rnn'):
+        cell = tf.nn.rnn_cell.MultiRNNCell([tf.contrib.rnn.BasicRNNCell(config.layer_dim) for _ in range(4)])
     elif(cell_type == 'lstm'):
         cell = tf.contrib.rnn.BasicLSTMCell(config.layer_dim)
     elif(cell_type == 'irnn'):
         cell = IRNNCell(config.layer_dim)
+    elif(cell_type == 'multi_irnn'):
+        cell = tf.nn.rnn_cell.MultiRNNCell([IRNNCell(config.layer_dim) for _ in range(4)])
     elif(cell_type == 'fast_weights'):
         cell = FastWeightCell(num_units = config.layer_dim,
                               lam = config.fw_lambda,
@@ -55,7 +59,7 @@ def static_classification_model_fn(features, labels, mode, params):
     inp = tf.unstack(tf.cast(features,tf.float32), axis=1)
 
     cell = get_rnn_cell(params['model'],config)
-    outputs, _ = tf.nn.static_rnn(cell, inp, dtype=tf.float32, sequence_length=tf.constant(np.ones(config.batchsize)*config.input_length,dtype=tf.int32))
+    outputs, _ = tf.nn.static_rnn(cell, inp, dtype=tf.float32)
     logits = tf.layers.dense(outputs[-1], config.output_dim, activation=None)
 
     # Compute predictions.

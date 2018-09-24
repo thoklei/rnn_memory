@@ -119,7 +119,7 @@ def _zero_state_tuple(state_size, batch_size, dtype):
     # Differs from rnn_cell_impl function here, and is specific to this code.
     return DynStateTuple(*[get_state_shape(s) for s in state_size])
 
-class FastWeightCell(rnn_cell_impl.RNNCell):
+class FastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
     """ 
     A FastWeight Cell following Ba et al (2016)
 
@@ -147,7 +147,7 @@ class FastWeightCell(rnn_cell_impl.RNNCell):
               has the given variables, error is raised.
 
         """
-        super(FastWeightCell, self).__init__(_reuse=reuse)
+        super(FastWeightCell, self).__init__(num_units=num_units, activation=activation, reuse=tf.AUTO_REUSE)
         self._num_units = num_units
         self._lam = lam
         self._eta = eta

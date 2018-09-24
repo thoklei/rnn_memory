@@ -71,11 +71,11 @@ def main(_):
 
     config = get_config()
 
-    config.num_epochs = 30# change this for mnist
-    num_runs = 5
+    config.num_epochs = 10# change this for mnist
+    num_runs = 3
 
-    fw_lambdas = [0.8,0.85,0.875,0.9,0.925,0.95]
-    fw_etas = [0.4,0.45,0.5,0.55,0.6,0.65]
+    fw_lambdas = [0.8,0.9,1.0,1.1,1.2]
+    fw_etas = [0.4,0.5,0.6,0.7]
 
     for lam in fw_lambdas:
         config.fw_lambda = lam

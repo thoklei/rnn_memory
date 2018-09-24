@@ -8,7 +8,7 @@ import numpy as np
 import shutil
 from configs import *
 import model_functions 
-imoprt glob
+import glob
 
 if(tf.__version__ == '1.4.0'):
     print("using old data provider")
@@ -68,11 +68,11 @@ def main(_):
 
     config = get_config()
 
-    config.num_epochs = 15 # change this for mnist
-    num_runs = 2
+    config.num_epochs = 10 # change this for mnist
+    num_runs = 5
 
     c_lambdas = [0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1]
-    c_alphas = [0.5,5,10,15,20,30,50,75,100,150]
+    c_alphas = [1,5,10,15,20,50,75,100]
 
     for lam in c_lambdas:
         config.c_lambda = lam
