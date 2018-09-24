@@ -109,7 +109,7 @@ def dynamic_classification_model_fn(features, labels, mode, params):
 
     cell = get_rnn_cell(params['model'],config)
 
-    outputs, _ = tf.nn.dynamic_rnn(cell, features, initial_state=cell.zero_state(config.batchsize))
+    outputs, _ = tf.nn.dynamic_rnn(cell, features, initial_state=cell.zero_state(config.batchsize, dtype=tf.float32))
     out = outputs[:,config.input_length-1,:]
 
     logits = tf.layers.dense(out, config.output_dim, activation=None)
