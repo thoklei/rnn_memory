@@ -3,7 +3,6 @@ import collections
 import tensorflow as tf
 from tensorflow.python.ops import init_ops
 from tensorflow.contrib.layers.python.layers import layers
-from tensorflow.python.ops.rnn_cell_impl import LayerRNNCell
 from tensorflow.python.layers import base as base_layer
 from tensorflow.python.ops.rnn_cell_impl import _concat
 from tensorflow.python.ops import array_ops
