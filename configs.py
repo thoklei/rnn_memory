@@ -6,7 +6,7 @@ class DefaultConfig(object):
     c_activation = staticmethod(tf.nn.tanh)
 
     def __init__(self):
-        self.num_epochs = 200 #200 = 100.000 steps 
+        self.num_epochs = 50 #200 = 100.000 steps 
         self.batchsize = 128
         self.layer_dim = 50
 
@@ -16,8 +16,8 @@ class DefaultConfig(object):
         self.fw_inner_loops = 1
         
         self.c_layer_norm = False
-        self.c_alpha = 12
-        self.c_lambda = 0.065
+        self.c_alpha = 20
+        self.c_lambda = 0.105
 
         self.norm_gain =  1
         self.norm_shift = 1
@@ -63,13 +63,19 @@ class Default_AR_Config(DefaultConfig):
         self.input_dim = 26+10+1
         self.output_dim = 26+10+1
 
+        self.c_layer_norm = False
+        self.c_alpha = 20
+        self.c_lambda = 0.105
+
 
 class Default_Addition_Config(DefaultConfig):
 
     def __init__(self):
         super(Default_Addition_Config,self).__init__()
-        self.input_length = 100
+        self.batchsize = 64
+        self.input_length = 200
         self.input_dim = 2
         self.output_dim = 1
+        self.layer_dim = 25
 
 
