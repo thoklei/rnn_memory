@@ -6,7 +6,7 @@ class DefaultConfig(object):
     c_activation = staticmethod(tf.nn.tanh)
 
     def __init__(self):
-        self.num_epochs = 200 #200 = 100.000 steps 
+        self.num_epochs = 100 #200 = 100.000 steps 
         self.batchsize = 128
         self.layer_dim = 50
 

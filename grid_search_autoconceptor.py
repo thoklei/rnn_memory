@@ -36,6 +36,8 @@ flags.DEFINE_string("task", "mnist_28",
     "Which task to solve. Options are: mnist_28, mnist_784, associative_retrieval")
 flags.DEFINE_string("mode", "static",
     "Which RNN unrolling mechanism to choose. Options are: static, dynamic")
+flags.DEFINE_string("summary_path", None,
+"Where to store the summaries of the run (not deleted afterwards)")
 
 FLAGS = flags.FLAGS
 
@@ -96,7 +98,7 @@ def main(_):
                         'config': config
                     })
 
-                summary_dir = os.path.join(FLAGS.summary_path,"{}_{}".format(lam,alpha),"run_{}".format(run))
+                #summary_dir = os.path.join(FLAGS.summary_path,"{}_{}".format(lam,alpha),"run_{}".format(run))
              
                 for _ in range(config.num_epochs):
                     # Train the Model.
@@ -111,13 +113,13 @@ def main(_):
         
                 res_list.append(eval_result['accuracy'])
 
-                event_file = glob.glob(os.path.join(model_dir,"events.out.tfevents*"))
-                if not os.path.exists(summary_dir):
-                    os.makedirs(summary_dir)
-                print(event_file)
-                shutil.copy(event_file[0], os.path.join(summary_dir,"events.out.tfevents"))
+                #event_file = glob.glob(os.path.join(model_dir,"events.out.tfevents*"))
+                #if not os.path.exists(summary_dir):
+                #    os.makedirs(summary_dir)
+                #print(event_file)
+                #shutil.copy(event_file[0], os.path.join(summary_dir,"events.out.tfevents"))
 
-                shutil.rmtree(model_dir, ignore_errors=True)
+                #shutil.rmtree(model_dir, ignore_errors=True)
 
             accuracy = np.mean(res_list)
 
