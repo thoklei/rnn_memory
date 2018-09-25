@@ -109,7 +109,8 @@ def main(_):
 
                 eval_result = classifier.evaluate(
                     input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, FLAGS.task, config),
-                    name="test"
+                    name="test",
+                    steps=1000
                 )
         
                 res_list.append(eval_result['accuracy'])

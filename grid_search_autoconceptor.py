@@ -88,7 +88,7 @@ def main(_):
                 
                 print("Starting run {} of {} for lambda {} and alpha {}".format(run+1, num_runs, lam, alpha))
 
-                model_dir = os.path.join(FLAGS.save_path,"{}_{}_{}".format(run,lam, alpha))
+                model_dir = os.path.join(FLAGS.save_path,"{}_{}".format(run,alpha))
                 
                 classifier = tf.estimator.Estimator(
                     model_fn=get_model_fn(FLAGS.task, FLAGS.mode),
@@ -107,7 +107,8 @@ def main(_):
 
                 eval_result = classifier.evaluate(
                     input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, FLAGS.task, config),
-                    name="test"
+                    name="test",
+                    steps=1000
                 )
                 print("Evaluation complete")
                 res_list.append(eval_result['accuracy'])
