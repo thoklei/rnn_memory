@@ -6,7 +6,7 @@ class DefaultConfig(object):
     c_activation = staticmethod(tf.nn.tanh)
 
     def __init__(self):
-        self.num_epochs = 50 #200 = 100.000 steps 
+        self.num_epochs = 200 #200 = 100.000 steps 
         self.batchsize = 128
         self.layer_dim = 50
 
@@ -49,7 +49,6 @@ class MNIST_28_Config(DefaultConfig):
 
     def __init__(self):
         super(MNIST_28_Config,self).__init__()
-        self.layer_dim = 100
         self.input_length = 28
         self.input_dim = 28
         self.output_dim = 10

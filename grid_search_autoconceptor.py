@@ -22,7 +22,7 @@ else:
 flags = tf.flags # cmd line FLAG manager for tensorflow
 logging = tf.logging # logging manager for tensorflow
 
-flags.DEFINE_string("config", "default_ar",
+flags.DEFINE_string("config", "mnist_28",
     "The configuration to use. See configs.py. Options are: default_ar, default_mnist.")
 flags.DEFINE_string("data_path",  None,
     "Where the dataset is stored. Make sure to point to the correct type (MNIST, AR)")
@@ -32,7 +32,7 @@ flags.DEFINE_bool("use_bfp16", False,
     "Train using 16-bit truncated floats instead of 32-bit float")
 flags.DEFINE_string("model", "autoconceptor",
     "Which type of Model to use. Options are: rnn, lstm, irnn, fast_weights, conceptor")
-flags.DEFINE_string("task", "associative_retrieval",
+flags.DEFINE_string("task", "mnist_28",
     "Which task to solve. Options are: mnist_28, mnist_784, associative_retrieval")
 flags.DEFINE_string("mode", "static",
     "Which RNN unrolling mechanism to choose. Options are: static, dynamic")
@@ -68,11 +68,11 @@ def main(_):
 
     config = get_config()
 
-    config.num_epochs = 10 # change this for mnist
-    num_runs = 5
+    config.num_epochs = 3 # change this for mnist
+    num_runs = 3
 
-    c_lambdas = [0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1]
-    c_alphas = [1,5,10,15,20,50,75,100]
+    c_lambdas = [0.01,0.02,0.03,0.04,0.05]
+    c_alphas = [15,50,100]
 
     for lam in c_lambdas:
         config.c_lambda = lam
