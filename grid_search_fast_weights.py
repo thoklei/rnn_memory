@@ -71,7 +71,7 @@ def main(_):
 
     config = get_config()
 
-    config.num_epochs = 3# change this for mnist
+    #config.num_epochs = 3# change this for mnist
     num_runs = 3
 
     fw_lambdas = [0.8,0.9,1.0,1.1,1.2]
@@ -101,11 +101,10 @@ def main(_):
 
                 summary_dir = os.path.join(FLAGS.summary_path,"{}_{}".format(lam,eta),"run_{}".format(run))
              
-                for _ in range(config.num_epochs):
-                    # Train the Model.
-                    classifier.train(
-                        input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, FLAGS.task, config),
-                        steps=500) #500*128 = 64000 = number of training samples
+                # Train the Model.
+                classifier.train(
+                    input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, FLAGS.task, config),
+                    steps=1500) #500*128 = 64000 = number of training samples
 
                 eval_result = classifier.evaluate(
                     input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, FLAGS.task, config),

@@ -98,7 +98,7 @@ def main(_):
                         'config': config
                     })
 
-                #summary_dir = os.path.join(FLAGS.summary_path,"{}_{}".format(lam,alpha),"run_{}".format(run))
+                summary_dir = os.path.join(FLAGS.summary_path,"{}_{}".format(lam,alpha),"run_{}".format(run))
              
                 # Train the Model.
                 classifier.train(
@@ -113,11 +113,11 @@ def main(_):
                 print("Evaluation complete")
                 res_list.append(eval_result['accuracy'])
 
-                #event_file = glob.glob(os.path.join(model_dir,"events.out.tfevents*"))
-                #if not os.path.exists(summary_dir):
-                #    os.makedirs(summary_dir)
-                #print(event_file)
-                #shutil.copy(event_file[0], os.path.join(summary_dir,"events.out.tfevents"))
+                event_file = glob.glob(os.path.join(model_dir,"events.out.tfevents*"))
+                if not os.path.exists(summary_dir):
+                   os.makedirs(summary_dir)
+                print(event_file)
+                shutil.copy(event_file[0], os.path.join(summary_dir,"events.out.tfevents"))
 
                 shutil.rmtree(model_dir, ignore_errors=True)
 
