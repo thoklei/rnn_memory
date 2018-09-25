@@ -70,9 +70,9 @@ def main(_):
 
     config = get_config()
 
-    config.num_epochs = 3 # change this for mnist
+    #config.num_epochs = 3 # change this for mnist
     num_runs = 3
-
+    train_steps = 1500
     c_lambdas = [0.01,0.02,0.03,0.04,0.05]
     c_alphas = [15,50,100]
 
@@ -85,7 +85,7 @@ def main(_):
             res_list = []
 
             for run in range(num_runs):
-
+                
                 print("Starting run {} of {} for lambda {} and alpha {}".format(run+1, num_runs, lam, alpha))
 
                 model_dir = os.path.join(FLAGS.save_path,"{}_{}_{}".format(run,lam, alpha))
@@ -100,17 +100,16 @@ def main(_):
 
                 #summary_dir = os.path.join(FLAGS.summary_path,"{}_{}".format(lam,alpha),"run_{}".format(run))
              
-                for _ in range(config.num_epochs):
-                    # Train the Model.
-                    classifier.train(
-                        input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, FLAGS.task, config),
-                        steps=500) #500*128 = 64000 = number of training samples
+                # Train the Model.
+                classifier.train(
+                    input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, FLAGS.task, config),
+                    steps=train_steps) #500*128 = 64000 = number of training samples
 
                 eval_result = classifier.evaluate(
                     input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, FLAGS.task, config),
                     name="test"
                 )
-        
+                print("Evaluation complete")
                 res_list.append(eval_result['accuracy'])
 
                 #event_file = glob.glob(os.path.join(model_dir,"events.out.tfevents*"))
@@ -119,7 +118,7 @@ def main(_):
                 #print(event_file)
                 #shutil.copy(event_file[0], os.path.join(summary_dir,"events.out.tfevents"))
 
-                #shutil.rmtree(model_dir, ignore_errors=True)
+                shutil.rmtree(model_dir, ignore_errors=True)
 
             accuracy = np.mean(res_list)
 
