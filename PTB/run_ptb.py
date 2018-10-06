@@ -78,15 +78,7 @@ class Default_PTB_Config(DefaultConfig):
 
 def get_config():
     config = None
-    if FLAGS.config == "mnist_784":
-        config = MNIST_784_Config()
-    elif FLAGS.config == "default_ar":
-        config = Default_AR_Config()
-    elif FLAGS.config == "mnist_28":
-        config = MNIST_28_Config()
-    elif FLAGS.config == "addition":
-        config = Default_Addition_Config()
-    elif FLAGS.config == "ptb":
+    if FLAGS.config == "ptb":
         config = Default_PTB_Config()
     else:
         raise ValueError("Config not understood. Options are: default_ar, mnist_784, mnist_28.")
