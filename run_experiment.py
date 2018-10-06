@@ -44,6 +44,8 @@ def get_config():
         config = MNIST_28_Config()
     elif FLAGS.config == "addition":
         config = Default_Addition_Config()
+    elif FLAGS.config == "ptb":
+        config = Default_PTB_Config()
     else:
         raise ValueError("Config not understood. Options are: default_ar, mnist_784, mnist_28.")
     return config
@@ -52,6 +54,8 @@ def get_config():
 def get_model_fn(task,mode):
     if(task == "addition"):
         return model_functions.scalar_model_fn
+    elif(task == "ptb"):
+        return model_functions.ptb_model_fn
     else:
         if(mode == "static"):
             return model_functions.static_classification_model_fn

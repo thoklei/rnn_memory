@@ -56,13 +56,13 @@ def ptb_model_fn(features, labels, mode, params):
     """
 
     config = params['config']
-    print("features before:", features) # expecting batchsize x sequence_length x 1
-    print("labels before: ", labels)
+    #print("features before:", features) # expecting batchsize x sequence_length x 1
+    #print("labels before: ", labels)
     #features = tf.Print(features, [features])
     features = tf.reshape(features, [-1, config.sequence_length])
     labels = tf.reshape(labels, [-1,config.sequence_length])
-    print("features after:", features) #bsize x 50
-    print("labels after:",labels)
+    #print("features after:", features) #bsize x 50
+    #print("labels after:",labels)
     #inp = tf.unstack(tf.cast(features,tf.float32), axis=1)
 
     embedding = tf.get_variable(
@@ -90,7 +90,7 @@ def ptb_model_fn(features, labels, mode, params):
         logits.append(tf.matmul(state, softmax_w) + softmax_b)
 
     logits = tf.transpose(tf.stack(logits),[1,0,2])
-    print("logits: ",logits) # expecting 50 x batchsize x 10.000 => 128 x 50 x 10.000
+    #print("logits: ",logits) # expecting 50 x batchsize x 10.000 => 128 x 50 x 10.000
     #logits += 1e-8 # to prevent NaN loss during training
 
     if mode == tf.estimator.ModeKeys.PREDICT:
