@@ -12,4 +12,8 @@ def main(_):
     std = np.std(resarray)
     print("The mean sentence length is {}, with a standard deviation of {}.".format(mean, std))
 
-main(" ")
+def count():
+    with tf.gfile.GFile("/Users/thomasklein/Uni/Bachelorarbeit/experiments/data/simple-examples/data/ptb.test.txt", "r") as f:
+        print(len(f.read().replace("\n", "<eos>").split()))
+
+count()

@@ -156,19 +156,21 @@ def main(_):
     for epoch in range(config.num_epochs):
         # Train the Model.
         classifier.train(
-            input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, config)) 
+            input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, config),
+            steps=1936) 
 
         #Evaluate the model.
         eval_result = classifier.evaluate(
             input_fn=lambda:d_prov.validation_input_fn(FLAGS.data_path, config),
-            name="validation")
+            name="validation",
+            steps=100)
 
         print('\nValidation set accuracy after epoch {}: {accuracy:0.3f}\n'.format(epoch+1,**eval_result))
 
     eval_result = classifier.evaluate(
         input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, config),
-        name="test"
-    )
+        name="test",
+        steps=171)
     
     print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
     

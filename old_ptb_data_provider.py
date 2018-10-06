@@ -46,12 +46,12 @@ def input_fn(path, config, mode, repeat):
 
 
 def train_input_fn(path, config):
-    return input_fn(path, config, 'train', False)
+    return input_fn(path, config, 'train', True)
 
 
 def validation_input_fn(path, config):
-    return input_fn(path, config, 'validation', False)
+    return input_fn(path, config, 'validation', True)
 
 
 def test_input_fn(path, config):
-    return input_fn(path, config, 'test', False)
+    return input_fn(path, config, 'test', True)

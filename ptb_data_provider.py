@@ -21,9 +21,9 @@ def read_dataset(path, mode, batch_size, repeat, datatype, sequence_length):
         parsed_features = tf.parse_single_example(example_proto, features)
 
         seq = tf.decode_raw(parsed_features["raw_sequence"], tf.int64)
-        print(seq)
+        #print(seq)
         seq.set_shape(sequence_length)
-        print("seq again:",seq)
+        #print("seq again:",seq)
         seq = tf.reshape(seq, [sequence_length,1])
         seq = tf.cast(seq, tf.int32)
 
