@@ -1,7 +1,6 @@
 import collections
 
 import tensorflow as tf
-import numpy as np
 from tensorflow.contrib.layers.python.layers import layers
 from tensorflow.python.framework import ops
 from tensorflow.python.ops import rnn_cell_impl
@@ -61,8 +60,10 @@ def _linear(args,
     # Now the computation.
     scope = vs.get_variable_scope()
     with vs.variable_scope(scope) as outer_scope:
+        print("in weight construction: total_arg_size: ",total_arg_size)
+        print("in weight construction: output_size: ",output_size)
         weights = vs.get_variable(
-            _WEIGHTS_VARIABLE_NAME, [total_arg_size, output_size], #87x50 = 50+37x50
+            _WEIGHTS_VARIABLE_NAME, [total_arg_size, output_size],
             dtype=dtype,
             initializer=kernel_initializer)
         if len(args) == 1:
@@ -130,9 +131,8 @@ class FastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
                  layer_norm=False,
                  norm_gain=1,
                  norm_shift=1,
-                 activation=tf.nn.tanh,
-                 reuse=None,
-                 kernel_initializer=None):
+                 activation=tf.nn.relu,
+                 reuse=None):
         """ 
         Initialize parameters for a FastWeightCell
 
@@ -147,8 +147,6 @@ class FastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
             reuse: (optional) [cp from rnn_cell_impl] bool, describes whether to reuse
               variables in existing scope. If not `True`, and the existing scope already
               has the given variables, error is raised.
-            kernel_initializer: how to initialize the weights. Useful for experiments with IRNN-like 
-              initialization.
 
         """
         super(FastWeightCell, self).__init__(num_units=num_units, activation=activation, reuse=tf.AUTO_REUSE)
@@ -161,8 +159,6 @@ class FastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
         self._b = norm_shift
 
         self._activation = activation
-
-        self.kernel_initializer = kernel_initializer
 
         self._state_size = DynStateTuple([num_units, num_units], num_units)
 

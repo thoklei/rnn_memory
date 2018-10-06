@@ -71,10 +71,10 @@ def main(_):
     config = get_config()
 
     #config.num_epochs = 3 # change this for mnist
-    num_runs = 3
+    num_runs = 1
     train_steps = 1500
-    c_lambdas = [0.01,0.02,0.03,0.04,0.05]
-    c_alphas = [15,50,100]
+    c_lambdas = [0.001,0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009]
+    c_alphas = [20]
 
     for lam in c_lambdas:
         config.c_lambda = lam
@@ -88,7 +88,7 @@ def main(_):
                 
                 print("Starting run {} of {} for lambda {} and alpha {}".format(run+1, num_runs, lam, alpha))
 
-                model_dir = os.path.join(FLAGS.save_path,"{}_{}".format(run,alpha))
+                model_dir = os.path.join(FLAGS.save_path,"{}_{}_{}".format(run,alpha,lam))
                 
                 classifier = tf.estimator.Estimator(
                     model_fn=get_model_fn(FLAGS.task, FLAGS.mode),

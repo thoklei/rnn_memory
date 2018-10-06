@@ -9,6 +9,7 @@ class DefaultConfig(object):
         self.num_epochs = 100 #200 = 100.000 steps 
         self.batchsize = 128
         self.layer_dim = 50
+        self.layers = 2
 
         self.fw_layer_norm = True
         self.fw_lambda = 1.1
@@ -53,6 +54,9 @@ class MNIST_28_Config(DefaultConfig):
         self.input_dim = 28
         self.output_dim = 10
 
+        self.fw_eta = 0.5
+        self.fw_lambda = 0.8
+
 
 class Default_AR_Config(DefaultConfig):
 
@@ -77,4 +81,18 @@ class Default_Addition_Config(DefaultConfig):
         self.output_dim = 1
         self.layer_dim = 25
 
+
+class Default_PTB_Config(DefaultConfig):
+
+    def __init__(self):
+        super(Default_PTB_Config,self).__init__()
+        self.num_epochs = 100
+        self.batchsize = 16
+        self.sequence_length = 30
+        self.input_dim = 10000
+        self.output_dim = 10000
+        self.layer_dim = 20
+
+        self.vocab_size = 10000
+        self.keep_prob = 0.8
 
