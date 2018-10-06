@@ -5,8 +5,8 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 import sys
-sys.path.append("../")
-from configs import *
+# sys.path.append("../")
+# from configs import *
 import model_functions
 if(tf.__version__ == '1.4.0'):
     print("using old data provider")
@@ -32,6 +32,49 @@ flags.DEFINE_string("mode", "static",
     "Which RNN unrolling mechanism to choose. Options are: static, dynamic")
     
 FLAGS = flags.FLAGS
+
+class DefaultConfig(object):
+
+    fw_activation = staticmethod(tf.nn.tanh)
+    c_activation = staticmethod(tf.nn.tanh)
+
+    def __init__(self):
+        self.num_epochs = 100 #200 = 100.000 steps 
+        self.batchsize = 128
+        self.layer_dim = 50
+        self.layers = 2
+
+        self.fw_layer_norm = True
+        self.fw_lambda = 1.1
+        self.fw_eta = 0.4
+        self.fw_inner_loops = 1
+        
+        self.c_layer_norm = False
+        self.c_alpha = 20
+        self.c_lambda = 0.105
+
+        self.norm_gain =  1
+        self.norm_shift = 1
+        self.optimizer = tf.train.AdamOptimizer()
+        self.clip_gradients = False
+
+    def __repr__(self):
+        return "\n".join([str(key)+": "+str(value) for key, value in self.__dict__.items() if not key.startswith('__') and not callable(key)])
+    
+ 
+class Default_PTB_Config(DefaultConfig):
+
+    def __init__(self):
+        super(Default_PTB_Config,self).__init__()
+        self.num_epochs = 100
+        self.batchsize = 16
+        self.sequence_length = 30
+        self.input_dim = 10000
+        self.output_dim = 10000
+        self.layer_dim = 20
+
+        self.vocab_size = 10000
+        self.keep_prob = 0.8
 
 def get_config():
     config = None
