@@ -89,10 +89,10 @@ class Default_PTB_Config(DefaultConfig):
         self.num_epochs = 100
         self.batchsize = 16
         self.sequence_length = 30
-        self.input_dim = 10000
+        self.input_dim = 1
         self.output_dim = 10000
-        self.layer_dim = 20
-
+        self.layer_dim = 200
+        self.embedding_size = 500
         self.vocab_size = 10000
         self.keep_prob = 0.8
 

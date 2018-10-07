@@ -69,7 +69,7 @@ def ptb_model_fn(features, labels, mode, params):
     #inp = tf.unstack(tf.cast(features,tf.float32), axis=1)
 
     embedding = tf.get_variable(
-          "embedding", [config.input_dim, config.vocab_size], dtype=tf.float32)
+          "embedding", [config.vocab_size, config.embedding_size], dtype=tf.float32)
     inputs = tf.nn.embedding_lookup(embedding, features)
     #print("embedding:", inputs) #expecting batchsize x sequence_length x vocab_size
 
