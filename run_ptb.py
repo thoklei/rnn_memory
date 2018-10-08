@@ -34,8 +34,6 @@ flags.DEFINE_string("mode", "static",
 FLAGS = flags.FLAGS
 
 
-
-
 def get_config():
     config = None
     if FLAGS.config == "mnist_784":
@@ -71,22 +69,24 @@ def ptb_model_fn(features, labels, mode, params):
     embedding = tf.get_variable(
           "embedding", [config.vocab_size, config.embedding_size], dtype=tf.float32)
     inputs = tf.nn.embedding_lookup(embedding, features)
-    print("embedded:", inputs) #expecting batchsize x sequence_length x embedding_size
+    #print("embedded:", inputs) #expecting batchsize x sequence_length x embedding_size
 
     if mode == tf.estimator.ModeKeys.TRAIN:
-        labels = tf.reshape(labels, [-1,config.sequence_length])[:,1:]
-        print("labels: ",labels)#should be batch x seq_len-1
+        #print("labels: ",labels)#should be batch x seq_len-1
         inputs = tf.nn.dropout(inputs, config.keep_prob)
+
+    if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
+        labels = tf.reshape(labels, [-1,config.sequence_length])[:,1:]
         inputs = inputs[:,:-1]
 
     cell = model_functions.get_rnn_cell(params['model'],config)
 
     inp = tf.unstack(tf.cast(inputs, tf.float32), axis=1) # should yield list of length sequence_length-1
-    print("len inp: ", len(inp)) # should be sequence_length-1
-    print("elem: ",inp[0]) # should be batchsize x embedding_size
+    #print("len inp: ", len(inp)) # should be sequence_length-1
+    #print("elem: ",inp[0]) # should be batchsize x embedding_size
     hidden_states, _ = tf.nn.static_rnn(cell, inp, dtype=tf.float32)
     # hidden state = [batchsize, hidden=config.layer_dim]
-    print(hidden_states)
+    #print(hidden_states)
     softmax_w = tf.get_variable("softmax_w", [config.layer_dim, config.vocab_size])
     softmax_b = tf.get_variable("softmax_b", [config.vocab_size])
 
@@ -98,7 +98,7 @@ def ptb_model_fn(features, labels, mode, params):
         logits.append(tf.nn.bias_add(tf.matmul(hidden_states[state], softmax_w),softmax_b))
 
     logits = tf.transpose(tf.stack(logits),[1,0,2])
-    print("logits: ",logits) # expecting sequence_length x batchsize x vocab_size => batchsize x seq_length x vocab_size
+    #print("logits: ",logits) # expecting sequence_length x batchsize x vocab_size => batchsize x seq_length x vocab_size
     #logits += 1e-8 # to prevent NaN loss during training
 
     if mode == tf.estimator.ModeKeys.PREDICT:
@@ -106,8 +106,8 @@ def ptb_model_fn(features, labels, mode, params):
         print("predictions:",predictions)# expecting batchsize x sequence_length
         return tf.estimator.EstimatorSpec(mode, predictions=predictions)
 
-    print("logits right before: ",logits)
-    print("labels right before: ",labels)
+    #print("logits right before: ",logits)
+    #print("labels right before: ",labels)
     # Compute loss.
     loss = tf.reduce_sum(tf.contrib.seq2seq.sequence_loss(
         logits=logits,
@@ -166,7 +166,7 @@ def main(_):
         # Train the Model.
         classifier.train(
             input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, config),
-            steps=1900) 
+            steps=1936) 
 
         #Evaluate the model.
         eval_result = classifier.evaluate(
@@ -179,7 +179,7 @@ def main(_):
     eval_result = classifier.evaluate(
         input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, config),
         name="test",
-        steps=171)
+        steps=170)
     
     print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
     
