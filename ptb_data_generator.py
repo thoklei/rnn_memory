@@ -95,4 +95,5 @@ def _read_words(filename):
 def main():
     write_ptb_to_tfrecords(FLAGS.data_path, FLAGS.save_path, FLAGS.length)
 
-main()
+if __name__ == 'main':
+    main()
