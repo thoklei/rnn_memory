@@ -57,6 +57,11 @@ def ptb_model_fn(features, labels, mode, params):
     """
 
     config = params['config']
+
+    if mode == tf.estimator.ModeKeys.TRAIN:
+        config.dropout_value = config.keep_prob
+    else:
+        config.dropout_value = 1.0
     #print("features before:", features) # expecting batchsize x sequence_length x 1
     #print("labels before: ", labels)
     #features = tf.Print(features, [features])
@@ -70,10 +75,6 @@ def ptb_model_fn(features, labels, mode, params):
           "embedding", [config.vocab_size, config.embedding_size], dtype=tf.float32)
     inputs = tf.nn.embedding_lookup(embedding, features)
     #print("embedded:", inputs) #expecting batchsize x sequence_length x embedding_size
-
-    if mode == tf.estimator.ModeKeys.TRAIN:
-        #print("labels: ",labels)#should be batch x seq_len-1
-        inputs = tf.nn.dropout(inputs, config.keep_prob)
 
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         labels = tf.reshape(labels, [-1,config.sequence_length])[:,1:]
@@ -166,7 +167,7 @@ def main(_):
         # Train the Model.
         classifier.train(
             input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, config),
-            steps=1936) 
+            steps=1900) 
 
         #Evaluate the model.
         eval_result = classifier.evaluate(

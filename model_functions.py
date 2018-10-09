@@ -19,6 +19,10 @@ def get_rnn_cell(cell_type, config):
     elif(cell_type == 'lstm'):
         cell = tf.contrib.rnn.BasicLSTMCell(config.layer_dim)
         #cell = tf.contrib.rnn.LSTMBlockCell(config.layer_dim)
+    elif(cell_type == 'mulit_lstm'):
+        cell = tf.nn.rnn_cell.MultiRNNCell(
+            [tf.nn.rnn_cell.DropoutWrapper(
+                tf.contrib.rnn.BasicLSTMCell(config.layer_dim),output_keep_prob=config.dropout_value) for _ in range(2)])
     elif(cell_type == 'irnn'):
         cell = IRNNCell(config.layer_dim)
     elif(cell_type == 'multi_irnn'):

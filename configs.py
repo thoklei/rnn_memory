@@ -87,12 +87,12 @@ class Default_PTB_Config(DefaultConfig):
     def __init__(self):
         super(Default_PTB_Config,self).__init__()
         self.num_epochs = 50
-        self.batchsize = 16
+        self.batchsize = 20
         self.sequence_length = 30
         self.input_dim = 1
         self.output_dim = 10000
-        self.layer_dim = 200
+        self.layer_dim = 650
         self.embedding_size = 500
         self.vocab_size = 10000
-        self.keep_prob = 0.8 # for dropout
+        self.keep_prob = 0.5 # for dropout
 
