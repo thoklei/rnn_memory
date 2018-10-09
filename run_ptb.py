@@ -74,6 +74,9 @@ def ptb_model_fn(features, labels, mode, params):
     embedding = tf.get_variable(
           "embedding", [config.vocab_size, config.embedding_size], dtype=tf.float32)
     inputs = tf.nn.embedding_lookup(embedding, features)
+
+    if mode == tf.estimator.ModeKeys.TRAIN:
+        inputs = tf.nn.dropout(inputs, config.keep_prob)
     #print("embedded:", inputs) #expecting batchsize x sequence_length x embedding_size
 
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
@@ -135,7 +138,8 @@ def ptb_model_fn(features, labels, mode, params):
     # Create training op.
     assert mode == tf.estimator.ModeKeys.TRAIN
 
-    optimizer = config.optimizer
+    optimizer = tf.train.GradientDescentOptimizer(tf.train.exponential_decay(1.0, tf.train.get_global_step(),
+                                           6*1500, 0.8, staircase=True))
     if(config.clip_gradients):
         gvs = optimizer.compute_gradients(loss)
         capped_gvs = [(tf.clip_by_value(grad, config.clip_value_min, config.clip_value_max), var) for grad, var in gvs]
