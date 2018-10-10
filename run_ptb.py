@@ -150,8 +150,8 @@ def ptb_model_fn(features, labels, mode, params):
     # Create training op.
     assert mode == tf.estimator.ModeKeys.TRAIN
 
-    optimizer = tf.train.GradientDescentOptimizer(tf.train.exponential_decay(1.0, tf.train.get_global_step(),
-                                           6*1500, 0.8, staircase=True))
+    optimizer = config.optimizer#tf.train.GradientDescentOptimizer(tf.train.exponential_decay(1.0, tf.train.get_global_step(),
+                #                           6*1500, 0.8, staircase=True))
     if(config.clip_gradients):
         gvs = optimizer.compute_gradients(loss)
         capped_gvs = [(tf.clip_by_value(grad, config.clip_value_min, config.clip_value_max), var) for grad, var in gvs]
@@ -180,8 +180,6 @@ def main(_):
             'config': config
         })
 
-    hidden_1 = np.zeros([config.batchsize, config.layer_dim])
-    hidden_2 = np.zeros([config.batchsize, config.layer_dim])
 
     class FeedHook(tf.train.SessionRunHook):
         def begin(self):
@@ -210,23 +208,35 @@ def main(_):
     feed_hook = FeedHook()
 
     for epoch in range(config.num_epochs):
+
+        hidden_1 = np.zeros([config.batchsize, config.layer_dim])
+        hidden_2 = np.zeros([config.batchsize, config.layer_dim])
+
         # Train the Model.
         classifier.train(
             input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, config),
             hooks = [feed_hook],
             steps=1500) 
 
+        hidden_1 = np.zeros([config.batchsize, config.layer_dim])
+        hidden_2 = np.zeros([config.batchsize, config.layer_dim])
+
         #Evaluate the model.
         eval_result = classifier.evaluate(
             input_fn=lambda:d_prov.validation_input_fn(FLAGS.data_path, config),
             name="validation",
+            hooks = [feed_hook],
             steps=80)
 
         print('\nValidation set accuracy after epoch {}: {accuracy:0.3f}\n'.format(epoch+1,**eval_result))
 
+    hidden_1 = np.zeros([config.batchsize, config.layer_dim])
+    hidden_2 = np.zeros([config.batchsize, config.layer_dim])
+    
     eval_result = classifier.evaluate(
         input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, config),
         name="test",
+        hooks = [feed_hook],
         steps=170)
     
     print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
