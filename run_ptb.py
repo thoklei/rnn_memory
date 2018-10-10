@@ -5,6 +5,7 @@ from __future__ import print_function
 import os
 import tensorflow as tf
 import sys
+import numpy as np
 
 from configs import *
 import model_functions
@@ -55,6 +56,9 @@ def ptb_model_fn(features, labels, mode, params):
     """
     Model Function
     """
+    global final_state
+    global old_hs_1
+    global old_hs_2
 
     config = params['config']
 
@@ -66,13 +70,16 @@ def ptb_model_fn(features, labels, mode, params):
     #print("labels before: ", labels)
     #features = tf.Print(features, [features])
     features = tf.reshape(features, [-1, config.sequence_length])
-    
+
+    old_hs_1 = tf.placeholder(dtype=tf.float32, shape=[config.batchsize,config.layer_dim])
+    old_hs_2 = tf.placeholder(dtype=tf.float32, shape=[config.batchsize,config.layer_dim])
     #print("features after:", features) #bsize x 50
     #print("labels after:",labels)
     #inp = tf.unstack(tf.cast(features,tf.float32), axis=1)
 
     embedding = tf.get_variable(
-          "embedding", [config.vocab_size, config.embedding_size], dtype=tf.float32)
+          "embedding", [config.vocab_size, config.embedding_size], 
+          dtype=tf.float32)
     inputs = tf.nn.embedding_lookup(embedding, features)
 
     if mode == tf.estimator.ModeKeys.TRAIN:
@@ -88,7 +95,12 @@ def ptb_model_fn(features, labels, mode, params):
     inp = tf.unstack(tf.cast(inputs, tf.float32), axis=1) # should yield list of length sequence_length-1
     #print("len inp: ", len(inp)) # should be sequence_length-1
     #print("elem: ",inp[0]) # should be batchsize x embedding_size
-    hidden_states, _ = tf.nn.static_rnn(cell, inp, dtype=tf.float32)
+    hidden_states, final_state = tf.nn.static_rnn(cell, inp, 
+                                    initial_state=(
+                                        (tf.nn.rnn_cell.LSTMStateTuple(c=old_hs_1,h=old_hs_1),
+                                        tf.nn.rnn_cell.LSTMStateTuple(c=old_hs_2,h=old_hs_2))), dtype=tf.float32)
+    
+    print("final state: ",final_state)
     # hidden state = [batchsize, hidden=config.layer_dim]
     #print(hidden_states)
     softmax_w = tf.get_variable("softmax_w", [config.layer_dim, config.vocab_size])
@@ -167,11 +179,42 @@ def main(_):
             'model': FLAGS.model,
             'config': config
         })
+
+    hidden_1 = np.zeros([config.batchsize, config.layer_dim])
+    hidden_2 = np.zeros([config.batchsize, config.layer_dim])
+
+    class FeedHook(tf.train.SessionRunHook):
+        def begin(self):
+            pass 
+
+        def after_create_session(self, session, coord):
+            pass
+
+        def before_run(self, run_context):
+            return tf.train.SessionRunArgs(fetches=final_state,
+                feed_dict={old_hs_1:hidden_1,old_hs_2:hidden_2})
+
+        def after_run(self, run_context, run_values):
+            global hidden_1
+            global hidden_2
+            #print("here they come...")
+            #print(run_values)
+            #print("that they were.")
+            hidden_1_state, hidden_2_state = run_values.results
+            hidden_1 = hidden_1_state.c
+            hidden_2 = hidden_2_state.c
+
+        def end(self, session):
+            pass
+
+    feed_hook = FeedHook()
+
     for epoch in range(config.num_epochs):
         # Train the Model.
         classifier.train(
             input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, config),
-            steps=1900) 
+            hooks = [feed_hook],
+            steps=1500) 
 
         #Evaluate the model.
         eval_result = classifier.evaluate(
