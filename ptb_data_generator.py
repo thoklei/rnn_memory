@@ -93,6 +93,7 @@ def _file_to_word_ids_old(filename, word_to_id):
 def _file_to_word_ids(filename, word_to_id, sequence_length, batchsize):
     raw_data = _read_words(filename)
     data = the_ben_transformation(raw_data, sequence_length, batchsize)
+    print("Length of new data: ",len(data))
     return [word_to_id[word] for word in data if word in word_to_id]
 
 
@@ -109,12 +110,12 @@ def construct_sequence_iter(data, sequence_length, batchsize):
             new_data = new_data+data[s:s+sequence_length]
             i += rep
     return new_data        
-    
 
-def the_ben_transformation(data, batch_size, sequence_length):
+
+def the_ben_transformation(data, sequence_length, batchsize):
     return [data[j+k+(i*sequence_length)]
-                for i in range(len(data) // (sequence_length * batch_size))
-                for j in range(0, (len(data) // (sequence_length * batch_size))*batch_size*sequence_length, (len(data) // (sequence_length * batch_size)) * sequence_length)
+                for i in range(len(data) // (sequence_length * batchsize))
+                for j in range(0, (len(data) // (sequence_length * batchsize))*batchsize*sequence_length, (len(data) // (sequence_length * batchsize)) * sequence_length)
                 for k in range(sequence_length)]
 
 def _read_words(filename):

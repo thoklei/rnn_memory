@@ -57,40 +57,35 @@ def ptb_model_fn(features, labels, mode, params):
     Model Function
     """
     global final_state
+    global dropout
     global old_hs_1
     global old_hs_2
 
     config = params['config']
 
-    if mode == tf.estimator.ModeKeys.TRAIN:
-        config.dropout_value = config.keep_prob
-    else:
-        config.dropout_value = 1.0
-    #print("features before:", features) # expecting batchsize x sequence_length x 1
-    #print("labels before: ", labels)
-    #features = tf.Print(features, [features])
+    dropout = tf.placeholder(dtype=tf.float32)
+
     features = tf.reshape(features, [-1, config.sequence_length])
 
     old_hs_1 = tf.placeholder(dtype=tf.float32, shape=[config.batchsize,config.layer_dim])
     old_hs_2 = tf.placeholder(dtype=tf.float32, shape=[config.batchsize,config.layer_dim])
-    #print("features after:", features) #bsize x 50
-    #print("labels after:",labels)
-    #inp = tf.unstack(tf.cast(features,tf.float32), axis=1)
 
     embedding = tf.get_variable(
           "embedding", [config.vocab_size, config.embedding_size], 
           dtype=tf.float32)
     inputs = tf.nn.embedding_lookup(embedding, features)
 
-    if mode == tf.estimator.ModeKeys.TRAIN:
-        inputs = tf.nn.dropout(inputs, config.keep_prob)
-    #print("embedded:", inputs) #expecting batchsize x sequence_length x embedding_size
+    inputs = tf.nn.dropout(inputs, dropout)
 
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         labels = tf.reshape(labels, [-1,config.sequence_length])[:,1:]
         inputs = inputs[:,:-1]
 
-    cell = model_functions.get_rnn_cell(params['model'],config)
+    #cell = model_functions.get_rnn_cell(params['model'],config)
+
+    cell = tf.nn.rnn_cell.MultiRNNCell(
+            [tf.contrib.rnn.DropoutWrapper(
+                tf.nn.rnn_cell.LSTMCell(config.layer_dim),output_keep_prob=dropout) for _ in range(2)])
 
     inp = tf.unstack(tf.cast(inputs, tf.float32), axis=1) # should yield list of length sequence_length-1
     #print("len inp: ", len(inp)) # should be sequence_length-1
@@ -182,12 +177,6 @@ def main(_):
 
 
     class FeedHook(tf.train.SessionRunHook):
-        def begin(self):
-            pass 
-
-        def after_create_session(self, session, coord):
-            pass
-
         def before_run(self, run_context):
             return tf.train.SessionRunArgs(fetches=final_state,
                 feed_dict={old_hs_1:hidden_1,old_hs_2:hidden_2})
@@ -195,17 +184,27 @@ def main(_):
         def after_run(self, run_context, run_values):
             global hidden_1
             global hidden_2
-            #print("here they come...")
-            #print(run_values)
-            #print("that they were.")
             hidden_1_state, hidden_2_state = run_values.results
             hidden_1 = hidden_1_state.c
             hidden_2 = hidden_2_state.c
 
-        def end(self, session):
-            pass
+    class DropoutHook(tf.train.SessionRunHook):
+
+        def __init__(self,dropout):
+            super(DropoutHook, self).__init__()
+            self.dropout = dropout
+
+        def before_run(self, run_context):
+            return tf.train.SessionRunArgs(fetches=None,
+                feed_dict={dropout:self.dropout})
 
     feed_hook = FeedHook()
+    dropout_train_hook = DropoutHook(config.keep_prob)
+    dropout_eval_hook = DropoutHook(1.0)
+
+    save_500_hook = tf.train.CheckpointSaverHook(
+        checkpoint_dir=FLAGS.save_path,
+        save_steps=500)
 
     for epoch in range(config.num_epochs):
 
@@ -215,7 +214,7 @@ def main(_):
         # Train the Model.
         classifier.train(
             input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, config),
-            hooks = [feed_hook],
+            hooks = [feed_hook, dropout_train_hook, save_500_hook],
             steps=1500) 
 
         hidden_1 = np.zeros([config.batchsize, config.layer_dim])
@@ -225,18 +224,18 @@ def main(_):
         eval_result = classifier.evaluate(
             input_fn=lambda:d_prov.validation_input_fn(FLAGS.data_path, config),
             name="validation",
-            hooks = [feed_hook],
+            hooks = [feed_hook, dropout_eval_hook],
             steps=80)
 
         print('\nValidation set accuracy after epoch {}: {accuracy:0.3f}\n'.format(epoch+1,**eval_result))
 
     hidden_1 = np.zeros([config.batchsize, config.layer_dim])
     hidden_2 = np.zeros([config.batchsize, config.layer_dim])
-    
+
     eval_result = classifier.evaluate(
         input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, config),
         name="test",
-        hooks = [feed_hook],
+        hooks = [feed_hook, dropout_eval_hook],
         steps=170)
     
     print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
