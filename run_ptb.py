@@ -1,6 +1,3 @@
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import os
 import tensorflow as tf
@@ -9,6 +6,7 @@ import numpy as np
 
 from configs import *
 import model_functions
+
 if(tf.__version__ == '1.4.0'):
     print("using old data provider")
     import old_ptb_data_provider as d_prov
@@ -120,7 +118,7 @@ def ptb_model_fn(features, labels, mode, params):
     #print("logits right before: ",logits)
     #print("labels right before: ",labels)
     # Compute loss.
-    loss = tf.reduce_sum(tf.contrib.seq2seq.sequence_loss(
+    loss = tf.reduce_mean(tf.contrib.seq2seq.sequence_loss(
         logits=logits[:,:-1],
         targets=labels,
         weights=tf.ones([config.batchsize, config.sequence_length-1], dtype=tf.float32),
@@ -202,9 +200,9 @@ def main(_):
     dropout_train_hook = DropoutHook(config.keep_prob)
     dropout_eval_hook = DropoutHook(1.0)
 
-    save_500_hook = tf.train.CheckpointSaverHook(
+    checkpoint_hook = tf.train.CheckpointSaverHook(
         checkpoint_dir=FLAGS.save_path,
-        save_steps=500)
+        save_steps=1000)
 
     for epoch in range(config.num_epochs):
 
@@ -214,8 +212,8 @@ def main(_):
         # Train the Model.
         classifier.train(
             input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, config),
-            hooks = [feed_hook, dropout_train_hook, save_500_hook],
-            steps=1500) 
+            hooks = [feed_hook, dropout_train_hook, checkpoint_hook],
+            steps=1327) 
 
         hidden_1 = np.zeros([config.batchsize, config.layer_dim])
         hidden_2 = np.zeros([config.batchsize, config.layer_dim])
