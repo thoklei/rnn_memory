@@ -92,13 +92,13 @@ class Default_PTB_Config(DefaultConfig):
         self.input_dim = 1
         self.output_dim = 10000
         self.layer_dim = 650
-        self.embedding_size = 500
+        self.embedding_size = 650
         self.vocab_size = 10000
         self.keep_prob = 0.2 # for dropout
         self.clip_gradients = False
         self.clip_value_min = -5
         self.clip_value_max = 5
-        #self.learning_rate = 1
-        self.optimizer = tf.train.AdamOptimizer()#tf.train.GradientDescentOptimizer(self.learning_rate)
+        self.learning_rate = 1e-3
+        self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate)#tf.train.AdamOptimizer()#tf.train.GradientDescentOptimizer(self.learning_rate)
 
 

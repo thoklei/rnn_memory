@@ -223,7 +223,7 @@ def main(_):
             input_fn=lambda:d_prov.validation_input_fn(FLAGS.data_path, config),
             name="validation",
             hooks = [feed_hook, dropout_eval_hook],
-            steps=80)
+            steps=105)
 
         print('\nValidation set accuracy after epoch {}: {accuracy:0.3f}\n'.format(epoch+1,**eval_result))
 
@@ -234,7 +234,7 @@ def main(_):
         input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, config),
         name="test",
         hooks = [feed_hook, dropout_eval_hook],
-        steps=170)
+        steps=117)
     
     print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
     
