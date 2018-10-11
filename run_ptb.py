@@ -79,7 +79,7 @@ def ptb_model_fn(features, labels, mode, params):
 
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         labels = tf.reshape(labels, [-1,config.sequence_length])[:,1:]
-        inputs = inputs[:,:-1]
+        #inputs = inputs[:,:-1]
 
     #cell = model_functions.get_rnn_cell(params['model'],config)
 
@@ -121,7 +121,7 @@ def ptb_model_fn(features, labels, mode, params):
     #print("labels right before: ",labels)
     # Compute loss.
     loss = tf.reduce_sum(tf.contrib.seq2seq.sequence_loss(
-        logits=logits,
+        logits=logits[:,:-1],
         targets=labels,
         weights=tf.ones([config.batchsize, config.sequence_length-1], dtype=tf.float32),
         average_across_timesteps=False,
@@ -130,7 +130,7 @@ def ptb_model_fn(features, labels, mode, params):
 
     # Compute evaluation metrics.
     accuracy = tf.metrics.accuracy(labels=labels,
-                                   predictions=tf.argmax(logits,axis=2),
+                                   predictions=tf.argmax(logits[:,:-1],axis=2),
                                    name='acc_op')
     perplexity = tf.exp(loss)
     metrics = {'accuracy': accuracy}

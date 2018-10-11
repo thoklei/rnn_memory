@@ -31,7 +31,7 @@ def read_dataset(path, mode, batch_size, repeat, datatype, sequence_length):
 
     training_path = os.path.join(path, mode+'.tfrecords')
     training_dataset = tf.data.TFRecordDataset(training_path)
-    training_dataset = training_dataset.map(_parse_function, num_parallel_calls=4)
+    training_dataset = training_dataset.map(_parse_function, num_parallel_calls=1)
     #training_dataset = training_dataset.shuffle(100)
     if(repeat):
         training_dataset = training_dataset.repeat()
