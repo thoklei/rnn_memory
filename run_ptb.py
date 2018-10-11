@@ -58,6 +58,7 @@ def ptb_model_fn(features, labels, mode, params):
     global dropout
     global old_hs_1
     global old_hs_2
+    global learning_rate
 
     config = params['config']
 
@@ -67,6 +68,8 @@ def ptb_model_fn(features, labels, mode, params):
 
     old_hs_1 = tf.placeholder(dtype=tf.float32, shape=[config.batchsize,config.layer_dim])
     old_hs_2 = tf.placeholder(dtype=tf.float32, shape=[config.batchsize,config.layer_dim])
+
+    learning_rate = tf.placeholder(dtype=tf.float32, shape=[config.batchsize, config.layer_dim])
 
     embedding = tf.get_variable(
           "embedding", [config.vocab_size, config.embedding_size], 
@@ -143,11 +146,10 @@ def ptb_model_fn(features, labels, mode, params):
     # Create training op.
     assert mode == tf.estimator.ModeKeys.TRAIN
 
-    optimizer = config.optimizer#tf.train.GradientDescentOptimizer(tf.train.exponential_decay(1.0, tf.train.get_global_step(),
-                #                           6*1500, 0.8, staircase=True))
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
     if(config.clip_gradients):
         gvs = optimizer.compute_gradients(loss)
-        capped_gvs = [(tf.clip_by_value(grad, config.clip_value_min, config.clip_value_max), var) for grad, var in gvs]
+        capped_gvs = [(tf.clip_by_norm(grad, config.clip_value_norm), var) for grad, var in gvs]
         train_op = optimizer.apply_gradients(capped_gvs, global_step=tf.train.get_global_step())
     else:
         train_op = optimizer.minimize(loss, global_step=tf.train.get_global_step())
@@ -175,9 +177,21 @@ def main(_):
 
 
     class FeedHook(tf.train.SessionRunHook):
+
+        def __init__(self,initial_lr):
+            super(FeedHook, self).__init__()
+            self.current_lr = initial_lr
+
+        def adjust_lr(self,new_val):
+            self.current_lr = new_val
+
         def before_run(self, run_context):
-            return tf.train.SessionRunArgs(fetches=final_state,
-                feed_dict={old_hs_1:hidden_1,old_hs_2:hidden_2})
+            return tf.train.SessionRunArgs(
+                fetches=final_state,
+                feed_dict={
+                    old_hs_1:hidden_1,
+                    old_hs_2:hidden_2,
+                    learning_rate:self.current_lr})
 
         def after_run(self, run_context, run_values):
             global hidden_1
@@ -193,10 +207,12 @@ def main(_):
             self.dropout = dropout
 
         def before_run(self, run_context):
-            return tf.train.SessionRunArgs(fetches=None,
-                feed_dict={dropout:self.dropout})
+            return tf.train.SessionRunArgs(
+                fetches=None,
+                feed_dict={
+                    dropout:self.dropout})
 
-    feed_hook = FeedHook()
+    feed_hook = FeedHook(config.learning_rate)
     dropout_train_hook = DropoutHook(config.keep_prob)
     dropout_eval_hook = DropoutHook(1.0)
 
@@ -214,6 +230,9 @@ def main(_):
             input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, config),
             hooks = [feed_hook, dropout_train_hook, checkpoint_hook],
             steps=1327) 
+
+        if(epoch > 6):
+            feed_hook.adjust_lr(feed_hook.current_lr/1.2)
 
         hidden_1 = np.zeros([config.batchsize, config.layer_dim])
         hidden_2 = np.zeros([config.batchsize, config.layer_dim])

@@ -98,7 +98,10 @@ class Default_PTB_Config(DefaultConfig):
         self.clip_gradients = False
         self.clip_value_min = -5
         self.clip_value_max = 5
-        self.learning_rate = 1e-3
-        self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate)#tf.train.AdamOptimizer()#tf.train.GradientDescentOptimizer(self.learning_rate)
+        self.clip_value_norm = 5
+        self.learning_rate = 1
+        #self.optimizer = tf.train.AdamOptimizer()
+        #self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate)
+        tf.train.GradientDescentOptimizer(self.learning_rate)
 
 
