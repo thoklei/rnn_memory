@@ -6,7 +6,7 @@ import numpy as np
 
 from configs import *
 import model_functions
-from fast_weight_cell import FastWeightCell
+from fast_weight_cell import FastWeightCell, DynStateTuple
 
 if(tf.__version__ == '1.4.0'):
     print("using old data provider")
@@ -66,8 +66,8 @@ def ptb_model_fn(features, labels, mode, params):
 
     features = tf.reshape(features, [-1, config.sequence_length])
 
-    old_hs_1 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize,config.layer_dim])
-    old_hs_2 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize,config.layer_dim])
+    old_hs_1 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize, config.layer_dim, config.layer_dim])
+    old_hs_2 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize, config.layer_dim])
 
     learning_rate = tf.placeholder(dtype=config.dtype, shape=())
 
@@ -81,18 +81,36 @@ def ptb_model_fn(features, labels, mode, params):
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         labels = tf.reshape(labels, [-1,config.sequence_length])[:,1:]
 
+    # === uncomment this for MultiDropoutLSTMcell ===
+    # cell = tf.nn.rnn_cell.MultiRNNCell(
+    #         [tf.contrib.rnn.DropoutWrapper(
+    #             tf.nn.rnn_cell.LSTMCell(config.layer_dim, initializer=tf.random_uniform_initializer(minval=-0.05, maxval=0.05), dtype=config.dtype),output_keep_prob=dropout) for _ in range(2)])
+    # ===============================================
+
+
     cell = tf.nn.rnn_cell.MultiRNNCell(
-            [tf.contrib.rnn.DropoutWrapper(
-                tf.nn.rnn_cell.LSTMCell(config.layer_dim, initializer=tf.random_uniform_initializer(minval=-0.05, maxval=0.05), dtype=config.dtype),output_keep_prob=dropout) for _ in range(2)])
+        [tf.contrib.rnn.DropoutWrapper(
+                FastWeightCell(config.layer_dim, lam=config.fw_lambda,eta=config.fw_eta), output_keep_prob=dropout) for _ in range(1)])
+
 
     inp = tf.unstack(tf.cast(inputs, config.dtype), axis=1) # should yield list of length sequence_length-1
 
+    # === uncomment this for multi dropout lstm ===
+    # hidden_states, final_state = tf.nn.static_rnn(cell, inp, 
+    #                                 initial_state=(
+    #                                     (tf.nn.rnn_cell.LSTMStateTuple(c=old_hs_1,h=old_hs_1),
+    #                                     tf.nn.rnn_cell.LSTMStateTuple(c=old_hs_2,h=old_hs_2))), 
+    #                                 dtype=config.dtype)
+    # ==============================================
+
     hidden_states, final_state = tf.nn.static_rnn(cell, inp, 
                                     initial_state=(
-                                        (tf.nn.rnn_cell.LSTMStateTuple(c=old_hs_1,h=old_hs_1),
-                                        tf.nn.rnn_cell.LSTMStateTuple(c=old_hs_2,h=old_hs_2))), 
+                                        DynStateTuple(A=old_hs_1, h=old_hs_2)),
                                     dtype=config.dtype)
-
+    
+    print("final state: ",final_state)
+    # hidden state = [batchsize, hidden=config.layer_dim]
+    #print(hidden_states)
     softmax_w = tf.get_variable("softmax_w", [config.layer_dim, config.vocab_size], dtype=config.dtype)
     softmax_b = tf.get_variable("softmax_b", [config.vocab_size], dtype=config.dtype)
 
@@ -138,7 +156,7 @@ def ptb_model_fn(features, labels, mode, params):
     # Create training op.
     assert mode == tf.estimator.ModeKeys.TRAIN
 
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+    optimizer = config.optimizer#tf.train.GradientDescentOptimizer(learning_rate)
     if(config.clip_gradients):
         gvs = optimizer.compute_gradients(loss)
         capped_gvs = [(tf.clip_by_norm(grad, config.clip_value_norm), var) for grad, var in gvs]
@@ -188,9 +206,9 @@ def main(_):
         def after_run(self, run_context, run_values):
             global hidden_1
             global hidden_2
-            hidden_1_state, hidden_2_state = run_values.results
-            hidden_1 = hidden_1_state.c
-            hidden_2 = hidden_2_state.c
+            dyn_state_tuple = run_values.results
+            hidden_1 = dyn_state_tuple.A
+            hidden_2 = dyn_state_tuple.h
 
     class DropoutHook(tf.train.SessionRunHook):
 
@@ -214,7 +232,7 @@ def main(_):
 
     for epoch in range(config.num_epochs):
 
-        hidden_1 = np.zeros([config.batchsize, config.layer_dim])
+        hidden_1 = np.zeros([config.batchsize, config.layer_dim, config.layer_dim])
         hidden_2 = np.zeros([config.batchsize, config.layer_dim])
 
         # Train the Model.
@@ -226,7 +244,7 @@ def main(_):
         if(epoch > 6):
             feed_hook.adjust_lr(feed_hook.current_lr/1.2)
 
-        hidden_1 = np.zeros([config.batchsize, config.layer_dim])
+        hidden_1 = np.zeros([config.batchsize, config.layer_dim, config.layer_dim])
         hidden_2 = np.zeros([config.batchsize, config.layer_dim])
 
         #Evaluate the model.
@@ -238,7 +256,7 @@ def main(_):
 
         print('\nValidation set accuracy after epoch {}: {accuracy:0.3f}\n'.format(epoch+1,**eval_result))
 
-    hidden_1 = np.zeros([config.batchsize, config.layer_dim])
+    hidden_1 = np.zeros([config.batchsize, config.layer_dim, config.layer_dim])
     hidden_2 = np.zeros([config.batchsize, config.layer_dim])
 
     eval_result = classifier.evaluate(

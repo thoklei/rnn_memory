@@ -112,6 +112,14 @@ class Default_PTB_Config(DefaultConfig):
         self.learning_rate = 1
         #self.optimizer = tf.train.AdamOptimizer()
         #self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate)
-        tf.train.GradientDescentOptimizer(self.learning_rate)
+        self.optimizer = tf.train.GradientDescentOptimizer
+
+class FW_PTB_Config(Default_PTB_Config):
+
+    def __init__(self):
+        super(FW_PTB_Config,self).__init__()
+        self.keep_prob = 1.0
+        self.optimizer = tf.train.AdamOptimizer()
+        
 
 
