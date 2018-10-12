@@ -69,7 +69,7 @@ def ptb_model_fn(features, labels, mode, params):
     old_hs_1 = tf.placeholder(dtype=tf.float32, shape=[config.batchsize,config.layer_dim])
     old_hs_2 = tf.placeholder(dtype=tf.float32, shape=[config.batchsize,config.layer_dim])
 
-    learning_rate = tf.placeholder(dtype=tf.float32, shape=[config.batchsize, config.layer_dim])
+    learning_rate = tf.placeholder(dtype=tf.float32, shape=())
 
     embedding = tf.get_variable(
           "embedding", [config.vocab_size, config.embedding_size], 
@@ -86,7 +86,7 @@ def ptb_model_fn(features, labels, mode, params):
 
     cell = tf.nn.rnn_cell.MultiRNNCell(
             [tf.contrib.rnn.DropoutWrapper(
-                tf.nn.rnn_cell.LSTMCell(config.layer_dim),output_keep_prob=dropout) for _ in range(2)])
+                tf.nn.rnn_cell.LSTMCell(config.layer_dim, initializer=tf.random_uniform_initializer(minval=-0.05, maxval=0.05)),output_keep_prob=dropout) for _ in range(2)])
 
     inp = tf.unstack(tf.cast(inputs, tf.float32), axis=1) # should yield list of length sequence_length-1
     #print("len inp: ", len(inp)) # should be sequence_length-1
