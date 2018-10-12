@@ -48,14 +48,17 @@ def get_config():
         config = Default_PTB_Config()
     else:
         raise ValueError("Config not understood. Options are: default_ar, mnist_784, mnist_28.")
+
+    if(FLAGS.use_bfp16):
+        config.dtype = tf.bfloat16
+    else:
+        config.dtype = tf.float32
     return config
 
 
 def get_model_fn(task,mode):
     if(task == "addition"):
         return model_functions.scalar_model_fn
-    elif(task == "ptb"):
-        return model_functions.ptb_model_fn
     else:
         if(mode == "static"):
             return model_functions.static_classification_model_fn

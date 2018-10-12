@@ -45,6 +45,8 @@ class MNIST_784_Config(DefaultConfig):
         self.fw_lambda = 0.9
         self.fw_eta = 0.5
 
+        self.tfrecord_dtype = tf.uint8
+
 
 class MNIST_28_Config(DefaultConfig):
 
@@ -56,6 +58,8 @@ class MNIST_28_Config(DefaultConfig):
 
         self.fw_eta = 0.5
         self.fw_lambda = 0.8
+
+        self.tfrecord_dtype = tf.uint8
 
 
 class Default_AR_Config(DefaultConfig):
@@ -70,6 +74,9 @@ class Default_AR_Config(DefaultConfig):
         self.c_alpha = 20
         self.c_lambda = 0.105
 
+        self.tfrecord_dtype = tf.int32
+        
+
 
 class Default_Addition_Config(DefaultConfig):
 
@@ -80,6 +87,9 @@ class Default_Addition_Config(DefaultConfig):
         self.input_dim = 2
         self.output_dim = 1
         self.layer_dim = 25
+
+        self.tfrecord_dtype = tf.float32
+
 
 
 class Default_PTB_Config(DefaultConfig):

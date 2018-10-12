@@ -95,8 +95,8 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
                  activation=tf.nn.relu,
                  num_inner_loops=1,
                  reuse=tf.AUTO_REUSE,
-                 scal_prod_weight=100
-                 ):
+                 scal_prod_weight=100,
+                 dtype=tf.float32):
         """ 
         Initialize parameters for a FastWeightCell
 
@@ -113,7 +113,7 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
         reuse           = whether to reuse variables in existing scope. 
 
         """
-        super(DynamicFastWeightCell, self).__init__(num_units, activation, reuse)
+        super(DynamicFastWeightCell, self).__init__(num_units, activation, reuse, dtype)
         self._num_units = num_units
         self._lam = lam
         self._eta = eta

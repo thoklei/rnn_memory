@@ -53,7 +53,7 @@ def ptb_model_fn(features, labels, mode, params):
     #inp = tf.unstack(tf.cast(features,tf.float32), axis=1)
 
     embedding = tf.get_variable(
-          "embedding", [config.vocab_size, config.embedding_size], dtype=tf.float32)
+          "embedding", [config.vocab_size, config.embedding_size], dtype=config.dtype)
     inputs = tf.nn.embedding_lookup(embedding, features)
     #print("embedding:", inputs) #expecting batchsize x sequence_length x embedding_size
 
@@ -63,10 +63,10 @@ def ptb_model_fn(features, labels, mode, params):
 
     cell = model_functions.get_rnn_cell(params['model'],config)
 
-    inp = tf.unstack(tf.cast(inputs, tf.float32), axis=1) # should yield list of length sequence_length
+    inp = tf.unstack(tf.cast(inputs, config.dtype), axis=1) # should yield list of length sequence_length
     #print("len inp: ", len(inp)) # should be 50
     #print("elem: ",inp[0]) # should be 128 x 10.000
-    hidden_states, _ = tf.nn.static_rnn(cell, inp, dtype=tf.float32)
+    hidden_states, _ = tf.nn.static_rnn(cell, inp, dtype=config.dtype)
     # hidden state = [batchsize, hidden=config.layer_dim]
     softmax_w = tf.get_variable("softmax_w", [config.layer_dim, config.output_dim])
     softmax_b = tf.get_variable("softmax_b", [config.output_dim])
@@ -88,7 +88,7 @@ def ptb_model_fn(features, labels, mode, params):
     loss = tf.reduce_sum(tf.contrib.seq2seq.sequence_loss(
         logits,
         labels,
-        tf.ones([config.batchsize, config.sequence_length], dtype=tf.float32),
+        tf.ones([config.batchsize, config.sequence_length], dtype=config.dtype),
         average_across_timesteps=False,
         average_across_batch=True))
     #loss = tf.losses.mean_squared_error(labels=labels, predictions=logits)
@@ -127,6 +127,11 @@ def create_rev_dict(filename):
 def main(_):
 
     config = Default_PTB_Config()
+
+    if(FLAGS.use_bfp16):
+        config.dtype = tf.bfloat16
+    else:
+        config.dtype = tf.float32
 
     ids_to_words = create_rev_dict(FLAGS.text_path)
 

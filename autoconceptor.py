@@ -38,7 +38,7 @@ class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):
     Autoconceptor, adapted from Jaeger.
     """
 
-    def __init__(self, num_units, alpha, lam, batchsize, activation=tf.nn.tanh, reuse=None, layer_norm=False):
+    def __init__(self, num_units, alpha, lam, batchsize, activation=tf.nn.tanh, reuse=None, layer_norm=False, dtype=tf.float32):
         """
         Args:
         num_units  = hidden state size of RNN cell
@@ -49,7 +49,7 @@ class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):
         reuse      = whether to reuse variables, just leave this as None
         layer_norm = whether to apply layer normalization, not necessary if using tanh
         """
-        super(Autoconceptor, self).__init__(num_units=num_units, activation=activation, reuse=reuse)
+        super(Autoconceptor, self).__init__(num_units=num_units, activation=activation, reuse=reuse,dtype=dtype)
         self.num_units = num_units
         self.c_lambda = tf.constant(lam, name="lambda")
         self.batchsize = batchsize
@@ -57,7 +57,7 @@ class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):
         self.layer_norm = layer_norm
         self._activation = activation
         self.aperture_fact = tf.constant(alpha**(-2), name="aperture")
-        self._state_size = self.zero_state(batchsize)
+        self._state_size = self.zero_state(batchsize, dtype)
 
         #no idea what this does, to be honest
         self.input_spec = base_layer.InputSpec(ndim=2)
@@ -72,7 +72,7 @@ class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):
     def output_size(self):
         return self.num_units
 
-    def zero_state(self, batch_size, dtype=tf.float32):
+    def zero_state(self, batch_size, dtype):
         """
         Returns the zero state for the autoconceptor cell.
 
@@ -83,8 +83,8 @@ class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):
         shape [batchsize, num_units, num_units] and a zero-filled hidden state of
         shape [batchsize, num_units]
         """
-        return DynStateTuple(C=tf.zeros([batch_size, self.num_units, self.num_units], dtype=tf.float32),
-                             h=tf.zeros([batch_size, self.num_units], dtype=tf.float32))
+        return DynStateTuple(C=tf.zeros([batch_size, self.num_units, self.num_units], dtype=dtype),
+                             h=tf.zeros([batch_size, self.num_units], dtype=dtype))
 
 
     def build(self, inputs_shape):
@@ -101,19 +101,19 @@ class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):
             "W_in",
             shape=[input_dim, self.num_units],
             initializer=init_ops.random_normal_initializer(),
-            dtype=tf.float32)
+            dtype=self.dtype)
 
         self.b_in = self.add_variable(
             "b_in",
             shape=[self.num_units],
             initializer= init_ops.zeros_initializer(),
-            dtype=tf.float32)
+            dtype=self.dtype)
 
         self.W = self.add_variable(
             "W",
             shape=[self.num_units, self.num_units],
             initializer=init_ops.constant_initializer(0.05 * np.identity(self.num_units)),
-            dtype=tf.float32)
+            dtype=self.dtype)
 
         self.built = True
 

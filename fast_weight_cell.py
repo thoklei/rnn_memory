@@ -132,7 +132,8 @@ class FastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
                  norm_shift=1,
                  activation=tf.nn.tanh,
                  reuse=None,
-                 kernel_initializer=None):
+                 kernel_initializer=None,
+                 dtype=tf.float32):
         """ 
         Initialize parameters for a FastWeightCell
 
@@ -151,7 +152,7 @@ class FastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
               initialization.
 
         """
-        super(FastWeightCell, self).__init__(num_units=num_units, activation=activation, reuse=tf.AUTO_REUSE)
+        super(FastWeightCell, self).__init__(num_units=num_units, activation=activation, reuse=tf.AUTO_REUSE, dtype=dtype)
         self._num_units = num_units
         self._lam = lam
         self._eta = eta

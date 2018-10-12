@@ -2,7 +2,7 @@ import tensorflow as tf
 import os
 
 
-def read_dataset(path, mode, batch_size, repeat, datatype, sequence_length):
+def read_dataset(path, mode, batch_size, repeat, sequence_length):
     """
     Reads data from .tfrecords-file, decodes it and returns the dataset as a
     tf.data.TFRecordDataset.
@@ -42,7 +42,7 @@ def read_dataset(path, mode, batch_size, repeat, datatype, sequence_length):
     
 
 def input_fn(path, config, mode, repeat):
-    return read_dataset(path, mode, config.batchsize, repeat, datatype=tf.int32, sequence_length=config.sequence_length)
+    return read_dataset(path, mode, config.batchsize, repeat, sequence_length=config.sequence_length)
 
 
 def train_input_fn(path, config):

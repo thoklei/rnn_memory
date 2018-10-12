@@ -1,7 +1,7 @@
 import tensorflow as tf
 import os
 
-def read_dataset(path, mode, batch_size, repeat, seq_length, seq_width, datatype):
+def read_dataset(path, mode, batch_size, repeat, seq_length, seq_width, out_dtype, tfrecord_dtype):
     """
     Reads data from .tfrecords-file, decodes it and returns the dataset as a
     tf.data.TFRecordDataset.
@@ -30,13 +30,13 @@ def read_dataset(path, mode, batch_size, repeat, seq_length, seq_width, datatype
 
         # NOTE: the reason that this will be an int32 is weird and hidden;
         # retrieve  sequence
-        seq = tf.decode_raw(parsed_features["raw_sequence"], datatype)
+        seq = tf.decode_raw(parsed_features["raw_sequence"], tfrecord_dtype)
         seq.set_shape(seq_length*seq_width)
         seq = tf.reshape(seq, [seq_length, seq_width])
-        seq = tf.cast(seq, tf.float32)
+        seq = tf.cast(seq, out_dtype)
 
         # retrieve labels [i.e. last and to be predicted element of sequence]
-        label = tf.decode_raw(parsed_features["raw_label"], datatype)
+        label = tf.decode_raw(parsed_features["raw_label"], tfrecord_dtype)
         label.set_shape(1)
         label = tf.cast(label, tf.int32)
 
@@ -57,16 +57,16 @@ def read_dataset(path, mode, batch_size, repeat, seq_length, seq_width, datatype
 
 
 def input_fn(path, task, config, mode, repeat):
-    if(task == "mnist_784"):
-        return read_dataset(path, mode, config.batchsize, repeat, seq_length=784, seq_width=1, datatype=tf.uint8)
-    elif(task=="associative_retrieval"):
-        return read_dataset(path, mode, config.batchsize, repeat, seq_length=config.input_length, seq_width=config.input_dim, datatype=tf.int32)
-    elif(task == "mnist_28"):
-        return read_dataset(path, mode, config.batchsize, repeat, seq_length=config.input_length, seq_width=config.input_dim, datatype=tf.uint8)    
-    elif(task == "addition"):
-        return read_dataset(path, mode, config.batchsize, repeat, seq_length=config.input_length, seq_width=config.input_dim, datatype=tf.float32)
-    else:
-        raise ValueError("Task type not understood.")
+    # if(task == "mnist_784"):
+    #     return read_dataset(path, mode, config.batchsize, repeat, seq_length=784, seq_width=1, datatype=tf.uint8)
+    # elif(task=="associative_retrieval"):
+    #     return read_dataset(path, mode, config.batchsize, repeat, seq_length=config.input_length, seq_width=config.input_dim, datatype=tf.int32)
+    # elif(task == "mnist_28"):
+    #     return read_dataset(path, mode, config.batchsize, repeat, seq_length=config.input_length, seq_width=config.input_dim, datatype=tf.uint8)    
+    # elif(task == "addition"):
+    return read_dataset(path, mode, config.batchsize, repeat, seq_length=config.input_length, seq_width=config.input_dim, out_dtype=config.dtype, tfrecord_dtype=config.tfrecord_dtype)
+    # else:
+    #     raise ValueError("Task type not understood.")
 
 
 def train_input_fn(path, task, config):

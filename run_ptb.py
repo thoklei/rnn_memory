@@ -47,6 +47,11 @@ def get_config():
         config = Default_PTB_Config()
     else:
         raise ValueError("Config not understood. Options are: default_ar, mnist_784, mnist_28.")
+
+    if(FLAGS.use_bfp16):
+        config.dtype = tf.float16
+    else:
+        config.dtype = tf.float32
     return config
 
 
@@ -62,18 +67,18 @@ def ptb_model_fn(features, labels, mode, params):
 
     config = params['config']
 
-    dropout = tf.placeholder(dtype=tf.float32)
+    dropout = tf.placeholder(dtype=config.dtype)
 
     features = tf.reshape(features, [-1, config.sequence_length])
 
-    old_hs_1 = tf.placeholder(dtype=tf.float32, shape=[config.batchsize,config.layer_dim])
-    old_hs_2 = tf.placeholder(dtype=tf.float32, shape=[config.batchsize,config.layer_dim])
+    old_hs_1 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize,config.layer_dim])
+    old_hs_2 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize,config.layer_dim])
 
-    learning_rate = tf.placeholder(dtype=tf.float32, shape=())
+    learning_rate = tf.placeholder(dtype=config.dtype, shape=())
 
     embedding = tf.get_variable(
           "embedding", [config.vocab_size, config.embedding_size], 
-          dtype=tf.float32)
+          dtype=config.dtype)
     inputs = tf.nn.embedding_lookup(embedding, features)
 
     inputs = tf.nn.dropout(inputs, dropout)
@@ -86,21 +91,22 @@ def ptb_model_fn(features, labels, mode, params):
 
     cell = tf.nn.rnn_cell.MultiRNNCell(
             [tf.contrib.rnn.DropoutWrapper(
-                tf.nn.rnn_cell.LSTMCell(config.layer_dim, initializer=tf.random_uniform_initializer(minval=-0.05, maxval=0.05)),output_keep_prob=dropout) for _ in range(2)])
+                tf.nn.rnn_cell.LSTMCell(config.layer_dim, initializer=tf.random_uniform_initializer(minval=-0.05, maxval=0.05), dtype=config.dtype),output_keep_prob=dropout) for _ in range(2)])
 
-    inp = tf.unstack(tf.cast(inputs, tf.float32), axis=1) # should yield list of length sequence_length-1
+    inp = tf.unstack(tf.cast(inputs, config.dtype), axis=1) # should yield list of length sequence_length-1
     #print("len inp: ", len(inp)) # should be sequence_length-1
     #print("elem: ",inp[0]) # should be batchsize x embedding_size
     hidden_states, final_state = tf.nn.static_rnn(cell, inp, 
                                     initial_state=(
                                         (tf.nn.rnn_cell.LSTMStateTuple(c=old_hs_1,h=old_hs_1),
-                                        tf.nn.rnn_cell.LSTMStateTuple(c=old_hs_2,h=old_hs_2))), dtype=tf.float32)
+                                        tf.nn.rnn_cell.LSTMStateTuple(c=old_hs_2,h=old_hs_2))), 
+                                    dtype=config.dtype)
     
     print("final state: ",final_state)
     # hidden state = [batchsize, hidden=config.layer_dim]
     #print(hidden_states)
-    softmax_w = tf.get_variable("softmax_w", [config.layer_dim, config.vocab_size])
-    softmax_b = tf.get_variable("softmax_b", [config.vocab_size])
+    softmax_w = tf.get_variable("softmax_w", [config.layer_dim, config.vocab_size], dtype=config.dtype)
+    softmax_b = tf.get_variable("softmax_b", [config.vocab_size], dtype=config.dtype)
 
     logits = []
 
@@ -117,12 +123,10 @@ def ptb_model_fn(features, labels, mode, params):
         predictions = tf.argmax(logits,axis=2)
         print("predictions:",predictions)# expecting batchsize x sequence_length
         return tf.estimator.EstimatorSpec(mode, predictions=predictions)
-
-    #print("logits right before: ",logits)
-    #print("labels right before: ",labels)
-    # Compute loss.
+    
+    # seq2seq loss doesn't work with float16
     loss = tf.reduce_mean(tf.contrib.seq2seq.sequence_loss(
-        logits=logits[:,:-1],
+        logits=tf.cast(logits[:,:-1],tf.float32),
         targets=labels,
         weights=tf.ones([config.batchsize, config.sequence_length-1], dtype=tf.float32),
         average_across_timesteps=False,
