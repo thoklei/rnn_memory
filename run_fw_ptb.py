@@ -76,7 +76,7 @@ def ptb_model_fn(features, labels, mode, params):
           dtype=config.dtype)
     inputs = tf.nn.embedding_lookup(embedding, features)
 
-    inputs = tf.nn.dropout(inputs, dropout)
+    #inputs = tf.nn.dropout(inputs, dropout)
 
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         labels = tf.reshape(labels, [-1,config.sequence_length])[:,1:]
@@ -88,8 +88,7 @@ def ptb_model_fn(features, labels, mode, params):
     # ===============================================
 
 
-    cell = tf.contrib.rnn.DropoutWrapper(
-                FastWeightCell(config.layer_dim, lam=config.fw_lambda,eta=config.fw_eta), output_keep_prob=dropout)
+    cell = FastWeightCell(config.layer_dim, lam=config.fw_lambda, eta=config.fw_eta, layer_norm=config.fw_layer_norm)
 
 
     inp = tf.unstack(tf.cast(inputs, config.dtype), axis=1) # should yield list of length sequence_length-1
