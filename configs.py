@@ -118,12 +118,19 @@ class FW_PTB_Config(Default_PTB_Config):
 
     def __init__(self):
         super(FW_PTB_Config,self).__init__()
+
         self.keep_prob = 1.0
         self.embedding_size = 500
-        self.layer_dim = 1000
+        self.layer_dim = 500
+
         self.fw_lambda = 0.8
-        self.eta = 0.4
+        self.fw_eta = 0.4
         self.fw_layer_norm = True
+
+        self.c_layer_norm = False
+        self.c_alpha = 20
+        self.c_lambda = 0.4
+        
         self.optimizer = tf.train.AdamOptimizer()
         
 
