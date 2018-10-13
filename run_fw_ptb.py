@@ -88,9 +88,8 @@ def ptb_model_fn(features, labels, mode, params):
     # ===============================================
 
 
-    cell = tf.nn.rnn_cell.MultiRNNCell(
-        [tf.contrib.rnn.DropoutWrapper(
-                FastWeightCell(config.layer_dim, lam=config.fw_lambda,eta=config.fw_eta), output_keep_prob=dropout) for _ in range(1)])
+    cell = tf.contrib.rnn.DropoutWrapper(
+                FastWeightCell(config.layer_dim, lam=config.fw_lambda,eta=config.fw_eta), output_keep_prob=dropout)
 
 
     inp = tf.unstack(tf.cast(inputs, config.dtype), axis=1) # should yield list of length sequence_length-1
@@ -104,8 +103,7 @@ def ptb_model_fn(features, labels, mode, params):
     # ==============================================
 
     hidden_states, final_state = tf.nn.static_rnn(cell, inp, 
-                                    initial_state=(
-                                        DynStateTuple(A=old_hs_1, h=old_hs_2)),
+                                    initial_state=DynStateTuple(A=old_hs_1, h=old_hs_2),
                                     dtype=config.dtype)
     
     print("final state: ",final_state)
@@ -207,6 +205,8 @@ def main(_):
             global hidden_1
             global hidden_2
             dyn_state_tuple = run_values.results
+            #print(type(dyn_state_tuple))
+            #print("dyn state tuple: ",dyn_state_tuple)
             hidden_1 = dyn_state_tuple.A
             hidden_2 = dyn_state_tuple.h
 
