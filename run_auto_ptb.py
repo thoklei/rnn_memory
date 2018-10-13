@@ -76,18 +76,18 @@ def ptb_model_fn(features, labels, mode, params):
           dtype=config.dtype)
     inputs = tf.nn.embedding_lookup(embedding, features)
 
-    #inputs = tf.nn.dropout(inputs, dropout)
+    inputs = tf.nn.dropout(inputs, dropout)
 
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         labels = tf.reshape(labels, [-1,config.sequence_length])[:,1:]
 
-    cell = Autoconceptor(num_units = config.layer_dim, 
+    cell = tf.contrib.rnn.DropoutWrapper(Autoconceptor(num_units = config.layer_dim, 
                              alpha = config.c_alpha, 
                              lam = config.c_lambda, 
                              batchsize = config.batchsize, 
                              activation=config.c_activation, 
                              layer_norm=False,
-                             dtype=config.dtype)
+                             dtype=config.dtype),output_keep_prob=dropout)
 
     inp = tf.unstack(tf.cast(inputs, config.dtype), axis=1) # should yield list of length sequence_length-1
 

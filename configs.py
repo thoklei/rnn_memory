@@ -129,9 +129,30 @@ class FW_PTB_Config(Default_PTB_Config):
 
         self.c_layer_norm = False
         self.c_alpha = 20
-        self.c_lambda = 0.4
-        
+        self.c_lambda = 0.01
+
         self.optimizer = tf.train.AdamOptimizer()
+
+class Auto_PTB_Config(Default_PTB_Config):
+
+    def __init__(self):
+        super(Auto_PTB_Config,self).__init__()
+
+        self.keep_prob = 0.5
+        self.embedding_size = 500
+        self.layer_dim = 500
+
+        self.fw_lambda = 0.8
+        self.fw_eta = 0.4
+        self.fw_layer_norm = True
+
+        self.c_layer_norm = False
+        self.c_alpha = 20
+        self.c_lambda = 0.01
+
+        self.optimizer = tf.train.AdamOptimizer()
+
+    
         
 
 

@@ -49,7 +49,7 @@ class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):
         reuse      = whether to reuse variables, just leave this as None
         layer_norm = whether to apply layer normalization, not necessary if using tanh
         """
-        super(Autoconceptor, self).__init__(num_units=num_units, activation=activation, reuse=reuse,dtype=dtype)
+        super(Autoconceptor, self).__init__(num_units=num_units, activation=activation, reuse=reuse)
         self.num_units = num_units
         self.c_lambda = tf.constant(lam, name="lambda")
         self.batchsize = batchsize
