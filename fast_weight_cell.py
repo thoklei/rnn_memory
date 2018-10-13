@@ -152,10 +152,13 @@ class FastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
               initialization.
 
         """
-        super(FastWeightCell, self).__init__(num_units=num_units, activation=activation, reuse=tf.AUTO_REUSE, dtype=dtype)
+        super(FastWeightCell, self).__init__(num_units=num_units, activation=activation, reuse=tf.AUTO_REUSE)
+        # would be better to pass dtype to this call to superclass-constructor, but in earlier versions
+        # of TF, BasicRNNCell did not take dtype as an argument.
         self._num_units = num_units
         self._lam = lam
         self._eta = eta
+        self.dtype = dtype
 
         self._layer_norm = layer_norm
         self._g = norm_gain
