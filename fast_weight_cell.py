@@ -158,7 +158,6 @@ class FastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
         self._num_units = num_units
         self._lam = lam
         self._eta = eta
-        self.dtype = dtype
 
         self._layer_norm = layer_norm
         self._g = norm_gain
