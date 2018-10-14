@@ -110,9 +110,9 @@ class Default_PTB_Config(DefaultConfig):
         self.clip_value_max = 5
         self.clip_value_norm = 5
         self.learning_rate = 1
-        #self.optimizer = tf.train.AdamOptimizer()
+        self.optimizer = tf.train.AdamOptimizer()
         #self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate)
-        self.optimizer = tf.train.GradientDescentOptimizer
+        #self.optimizer = tf.train.GradientDescentOptimizer
 
 class FW_PTB_Config(Default_PTB_Config):
 
@@ -120,16 +120,12 @@ class FW_PTB_Config(Default_PTB_Config):
         super(FW_PTB_Config,self).__init__()
 
         self.keep_prob = 1.0
-        self.embedding_size = 500
-        self.layer_dim = 500
+        self.embedding_size = 650
+        self.layer_dim = 650
 
         self.fw_lambda = 0.8
         self.fw_eta = 0.4
         self.fw_layer_norm = True
-
-        self.c_layer_norm = False
-        self.c_alpha = 20
-        self.c_lambda = 0.01
 
         self.optimizer = tf.train.AdamOptimizer()
 
@@ -138,17 +134,13 @@ class Auto_PTB_Config(Default_PTB_Config):
     def __init__(self):
         super(Auto_PTB_Config,self).__init__()
 
-        self.keep_prob = 0.5
-        self.embedding_size = 500
-        self.layer_dim = 500
-
-        self.fw_lambda = 0.8
-        self.fw_eta = 0.4
-        self.fw_layer_norm = True
+        self.keep_prob = 0.4
+        self.embedding_size = 650
+        self.layer_dim = 650
 
         self.c_layer_norm = False
         self.c_alpha = 20
-        self.c_lambda = 0.01
+        self.c_lambda = 0.001
 
         self.optimizer = tf.train.AdamOptimizer()
 

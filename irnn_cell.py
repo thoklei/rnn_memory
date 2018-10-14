@@ -5,7 +5,7 @@ import numpy as np
 class IRNNCell(tf.nn.rnn_cell.BasicRNNCell):
 
     def __init__(self, num_units, activation=tf.nn.relu, reuse=None, dtype=tf.float32):
-        super(IRNNCell, self).__init__(num_units, activation, reuse, dtype)
+        super(IRNNCell, self).__init__(num_units, activation, reuse)
 
     def build(self, inputs_shape):
         if inputs_shape[1].value is None:
