@@ -58,6 +58,8 @@ def ptb_model_fn(features, labels, mode, params):
     global dropout
     global old_hs_1
     global old_hs_2
+    global old_hs_3
+    global old_hs_4
     global learning_rate
 
     config = params['config']
@@ -68,6 +70,8 @@ def ptb_model_fn(features, labels, mode, params):
 
     old_hs_1 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize, config.layer_dim, config.layer_dim])
     old_hs_2 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize, config.layer_dim])
+    old_hs_3 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize, config.layer_dim, config.layer_dim])
+    old_hs_4 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize, config.layer_dim])
 
     learning_rate = tf.placeholder(dtype=config.dtype, shape=())
 
@@ -81,18 +85,20 @@ def ptb_model_fn(features, labels, mode, params):
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         labels = tf.reshape(labels, [-1,config.sequence_length])[:,1:]
     
-    cell = tf.contrib.rnn.DropoutWrapper(Autoconceptor(num_units = config.layer_dim, 
+    cell = tf.nn.rnn_cell.MultiRNNCell(
+            [tf.contrib.rnn.DropoutWrapper(Autoconceptor(num_units = config.layer_dim, 
                              alpha = config.c_alpha, 
                              lam = config.c_lambda, 
                              batchsize = config.batchsize, 
                              activation=config.c_activation, 
                              layer_norm=False,
-                             dtype=config.dtype),output_keep_prob=dropout)
+                             dtype=config.dtype),output_keep_prob=dropout) for _ in range(2)])
 
     inp = tf.unstack(tf.cast(inputs, config.dtype), axis=1) # should yield list of length sequence_length-1
 
     hidden_states, final_state = tf.nn.static_rnn(cell, inp, 
-                                    initial_state=DynStateTuple(C=old_hs_1, h=old_hs_2),
+                                    initial_state=(DynStateTuple(C=old_hs_1, h=old_hs_2),
+                                                   DynStateTuple(C=old_hs_3, h=old_hs_4)),
                                     dtype=config.dtype)
     
     print("final state: ",final_state)
@@ -188,16 +194,22 @@ def main(_):
                 feed_dict={
                     old_hs_1:hidden_1,
                     old_hs_2:hidden_2,
+                    old_hs_3:hidden_3,
+                    old_hs_4:hidden_4,
                     learning_rate:self.current_lr})
 
         def after_run(self, run_context, run_values):
             global hidden_1
             global hidden_2
-            dyn_state_tuple = run_values.results
+            global hidden_3
+            global hidden_4
+            dyn_state_tuple_1,dyn_state_tuple_2 = run_values.results
             #print(type(dyn_state_tuple))
             #print("dyn state tuple: ",dyn_state_tuple)
-            hidden_1 = dyn_state_tuple.C
-            hidden_2 = dyn_state_tuple.h
+            hidden_1 = dyn_state_tuple_1.C
+            hidden_2 = dyn_state_tuple_1.h
+            hidden_3 = dyn_state_tuple_2.C
+            hidden_4 = dyn_state_tuple_2.h
 
     class DropoutHook(tf.train.SessionRunHook):
 
@@ -223,6 +235,8 @@ def main(_):
 
         hidden_1 = np.zeros([config.batchsize, config.layer_dim, config.layer_dim])
         hidden_2 = np.zeros([config.batchsize, config.layer_dim])
+        hidden_3 = np.zeros([config.batchsize, config.layer_dim, config.layer_dim])
+        hidden_4 = np.zeros([config.batchsize, config.layer_dim])
 
         # Train the Model.
         classifier.train(
@@ -235,6 +249,8 @@ def main(_):
 
         hidden_1 = np.zeros([config.batchsize, config.layer_dim, config.layer_dim])
         hidden_2 = np.zeros([config.batchsize, config.layer_dim])
+        hidden_3 = np.zeros([config.batchsize, config.layer_dim, config.layer_dim])
+        hidden_4 = np.zeros([config.batchsize, config.layer_dim])
 
         #Evaluate the model.
         eval_result = classifier.evaluate(
@@ -247,6 +263,8 @@ def main(_):
 
     hidden_1 = np.zeros([config.batchsize, config.layer_dim, config.layer_dim])
     hidden_2 = np.zeros([config.batchsize, config.layer_dim])
+    hidden_3 = np.zeros([config.batchsize, config.layer_dim, config.layer_dim])
+    hidden_4 = np.zeros([config.batchsize, config.layer_dim])
 
     eval_result = classifier.evaluate(
         input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, config),

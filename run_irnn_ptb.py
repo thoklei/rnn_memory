@@ -80,7 +80,7 @@ def ptb_model_fn(features, labels, mode, params):
           dtype=config.dtype)
     inputs = tf.nn.embedding_lookup(embedding, features)
 
-    inputs = tf.nn.dropout(inputs, dropout)
+    #inputs = tf.nn.dropout(inputs, dropout)
 
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         labels = tf.reshape(labels, [-1,config.sequence_length])[:,1:]
@@ -90,8 +90,7 @@ def ptb_model_fn(features, labels, mode, params):
     #             tf.nn.rnn_cell.LSTMCell(config.layer_dim, initializer=tf.random_uniform_initializer(minval=-0.05, maxval=0.05), dtype=config.dtype),output_keep_prob=dropout) for _ in range(2)])
 
     cell = tf.nn.rnn_cell.MultiRNNCell(
-            [tf.contrib.rnn.DropoutWrapper(
-                    IRNNCell(config.layer_dim),output_keep_prob=dropout) for _ in range(4)])
+            [IRNNCell(config.layer_dim) for _ in range(4)])
     inp = tf.unstack(tf.cast(inputs, config.dtype), axis=1) # should yield list of length sequence_length-1
 
     hidden_states, final_state = tf.nn.static_rnn(cell, inp, 

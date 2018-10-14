@@ -7,6 +7,7 @@ import numpy as np
 from configs import *
 import model_functions
 from autoconceptor import Autoconceptor, DynStateTuple
+from irnn_cell import IRNNCell
 
 if(tf.__version__ == '1.4.0'):
     print("using old data provider")
@@ -58,6 +59,8 @@ def ptb_model_fn(features, labels, mode, params):
     global dropout
     global old_hs_1
     global old_hs_2
+    global old_hs_3
+    global old_hs_4
     global learning_rate
 
     config = params['config']
@@ -66,8 +69,10 @@ def ptb_model_fn(features, labels, mode, params):
 
     features = tf.reshape(features, [-1, config.sequence_length])
 
-    old_hs_1 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize, config.layer_dim, config.layer_dim])
+    old_hs_1 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize, config.layer_dim])
     old_hs_2 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize, config.layer_dim])
+    old_hs_3 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize, config.layer_dim, config.layer_dim])
+    old_hs_4 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize, config.layer_dim])
 
     learning_rate = tf.placeholder(dtype=config.dtype, shape=())
 
@@ -81,18 +86,22 @@ def ptb_model_fn(features, labels, mode, params):
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         labels = tf.reshape(labels, [-1,config.sequence_length])[:,1:]
     
-    cell = tf.contrib.rnn.DropoutWrapper(Autoconceptor(num_units = config.layer_dim, 
+    cell = tf.nn.rnn_cell.MultiRNNCell(
+            [tf.contrib.rnn.DropoutWrapper(IRNNCell(config.layer_dim),output_keep_prob=dropout),
+             tf.contrib.rnn.DropoutWrapper(IRNNCell(config.layer_dim),output_keep_prob=dropout),
+             tf.contrib.rnn.DropoutWrapper(Autoconceptor(num_units = config.layer_dim, 
                              alpha = config.c_alpha, 
                              lam = config.c_lambda, 
                              batchsize = config.batchsize, 
                              activation=config.c_activation, 
                              layer_norm=False,
-                             dtype=config.dtype),output_keep_prob=dropout)
+                             dtype=config.dtype),output_keep_prob=dropout)])
 
     inp = tf.unstack(tf.cast(inputs, config.dtype), axis=1) # should yield list of length sequence_length-1
 
     hidden_states, final_state = tf.nn.static_rnn(cell, inp, 
-                                    initial_state=DynStateTuple(C=old_hs_1, h=old_hs_2),
+                                    initial_state=(old_hs_1,old_hs_2,
+                                                   DynStateTuple(C=old_hs_3, h=old_hs_4)),
                                     dtype=config.dtype)
     
     print("final state: ",final_state)
@@ -188,16 +197,18 @@ def main(_):
                 feed_dict={
                     old_hs_1:hidden_1,
                     old_hs_2:hidden_2,
+                    old_hs_3:hidden_3,
+                    old_hs_4:hidden_4,
                     learning_rate:self.current_lr})
 
         def after_run(self, run_context, run_values):
             global hidden_1
             global hidden_2
-            dyn_state_tuple = run_values.results
-            #print(type(dyn_state_tuple))
-            #print("dyn state tuple: ",dyn_state_tuple)
-            hidden_1 = dyn_state_tuple.C
-            hidden_2 = dyn_state_tuple.h
+            global hidden_3
+            global hidden_4
+            hidden_1, hidden_2, dyn_state_tuple = run_values.results
+            hidden_3 = dyn_state_tuple.C
+            hidden_4 = dyn_state_tuple.h
 
     class DropoutHook(tf.train.SessionRunHook):
 
@@ -221,8 +232,10 @@ def main(_):
 
     for epoch in range(config.num_epochs):
 
-        hidden_1 = np.zeros([config.batchsize, config.layer_dim, config.layer_dim])
+        hidden_1 = np.zeros([config.batchsize, config.layer_dim])
         hidden_2 = np.zeros([config.batchsize, config.layer_dim])
+        hidden_3 = np.zeros([config.batchsize, config.layer_dim, config.layer_dim])
+        hidden_4 = np.zeros([config.batchsize, config.layer_dim])
 
         # Train the Model.
         classifier.train(
@@ -233,8 +246,10 @@ def main(_):
         if(epoch > 6):
             feed_hook.adjust_lr(feed_hook.current_lr/1.2)
 
-        hidden_1 = np.zeros([config.batchsize, config.layer_dim, config.layer_dim])
+        hidden_1 = np.zeros([config.batchsize, config.layer_dim])
         hidden_2 = np.zeros([config.batchsize, config.layer_dim])
+        hidden_3 = np.zeros([config.batchsize, config.layer_dim, config.layer_dim])
+        hidden_4 = np.zeros([config.batchsize, config.layer_dim])
 
         #Evaluate the model.
         eval_result = classifier.evaluate(
@@ -245,8 +260,10 @@ def main(_):
 
         print('\nValidation set accuracy after epoch {}: {accuracy:0.3f}\n'.format(epoch+1,**eval_result))
 
-    hidden_1 = np.zeros([config.batchsize, config.layer_dim, config.layer_dim])
+    hidden_1 = np.zeros([config.batchsize, config.layer_dim])
     hidden_2 = np.zeros([config.batchsize, config.layer_dim])
+    hidden_3 = np.zeros([config.batchsize, config.layer_dim, config.layer_dim])
+    hidden_4 = np.zeros([config.batchsize, config.layer_dim])
 
     eval_result = classifier.evaluate(
         input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, config),
