@@ -104,13 +104,13 @@ class Default_PTB_Config(DefaultConfig):
         self.layer_dim = 650
         self.embedding_size = 650
         self.vocab_size = 10000
-        self.keep_prob = 0.5 # for dropout
-        self.clip_gradients = False
+        self.keep_prob = 0.3 # for dropout
+        self.clip_gradients = True
         self.clip_value_min = -5
         self.clip_value_max = 5
         self.clip_value_norm = 5
         self.learning_rate = 1
-        self.optimizer = tf.train.AdamOptimizer()
+        #self.optimizer = tf.train.AdamOptimizer()
         #self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate)
         #self.optimizer = tf.train.GradientDescentOptimizer
 
@@ -119,13 +119,14 @@ class FW_PTB_Config(Default_PTB_Config):
     def __init__(self):
         super(FW_PTB_Config,self).__init__()
 
-        self.keep_prob = 1.0
+        self.keep_prob = 0.5
         self.embedding_size = 650
         self.layer_dim = 650
+        self.clip_gradients = False
 
         self.fw_lambda = 0.8
         self.fw_eta = 0.4
-        self.fw_layer_norm = True
+        self.fw_layer_norm = False
 
         self.optimizer = tf.train.AdamOptimizer()
 
@@ -137,6 +138,7 @@ class Auto_PTB_Config(Default_PTB_Config):
         self.keep_prob = 0.45
         self.embedding_size = 650
         self.layer_dim = 650
+        self.clip_gradients = False
 
         self.c_layer_norm = False
         self.c_alpha = 20

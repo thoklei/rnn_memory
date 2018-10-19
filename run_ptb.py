@@ -133,7 +133,7 @@ def ptb_model_fn(features, labels, mode, params):
 
     if mode == tf.estimator.ModeKeys.EVAL:
         return tf.estimator.EstimatorSpec(
-            mode, loss=loss, eval_metric_ops=metrics)
+            mode, loss=perplexity, eval_metric_ops=metrics)
 
     # Create training op.
     assert mode == tf.estimator.ModeKeys.TRAIN

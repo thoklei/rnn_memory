@@ -18,7 +18,7 @@ else:
 flags = tf.flags # cmd line FLAG manager for tensorflow
 logging = tf.logging # logging manager for tensorflow
 
-flags.DEFINE_string("config", "default_ptb",
+flags.DEFINE_string("config", "fw_ptb",
     "The configuration to use. See configs.py. Options are: default_ar, default_mnist.")
 flags.DEFINE_string("data_path", None,
     "Where the dataset is stored. Make sure to point to the correct type (MNIST, AR)")
@@ -26,10 +26,6 @@ flags.DEFINE_string("save_path", None,
     "Model output directory. This is where event files and checkpoints are stored.")
 flags.DEFINE_bool("use_bfp16", False,
     "Train using 16-bit truncated floats instead of 32-bit float")
-flags.DEFINE_string("model", "fast_weights",
-    "Which type of Model to use. Options are: rnn, lstm, irnn, fast_weights, conceptor")
-flags.DEFINE_string("mode", "static",
-    "Which RNN unrolling mechanism to choose. Options are: static, dynamic")
     
 FLAGS = flags.FLAGS
 
@@ -76,30 +72,15 @@ def ptb_model_fn(features, labels, mode, params):
           dtype=config.dtype)
     inputs = tf.nn.embedding_lookup(embedding, features)
 
-    #inputs = tf.nn.dropout(inputs, dropout)
+    inputs = tf.nn.dropout(inputs, dropout)
 
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         labels = tf.reshape(labels, [-1,config.sequence_length])[:,1:]
 
-    # === uncomment this for MultiDropoutLSTMcell ===
-    # cell = tf.nn.rnn_cell.MultiRNNCell(
-    #         [tf.contrib.rnn.DropoutWrapper(
-    #             tf.nn.rnn_cell.LSTMCell(config.layer_dim, initializer=tf.random_uniform_initializer(minval=-0.05, maxval=0.05), dtype=config.dtype),output_keep_prob=dropout) for _ in range(2)])
-    # ===============================================
-
-
-    cell = FastWeightCell(config.layer_dim, lam=config.fw_lambda, eta=config.fw_eta, layer_norm=config.fw_layer_norm)
+    cell = tf.nn.rnn_cell.DropoutWrapper(FastWeightCell(config.layer_dim, lam=config.fw_lambda, eta=config.fw_eta, layer_norm=config.fw_layer_norm), input_keep_prob=dropout)
 
 
     inp = tf.unstack(tf.cast(inputs, config.dtype), axis=1) # should yield list of length sequence_length-1
-
-    # === uncomment this for multi dropout lstm ===
-    # hidden_states, final_state = tf.nn.static_rnn(cell, inp, 
-    #                                 initial_state=(
-    #                                     (tf.nn.rnn_cell.LSTMStateTuple(c=old_hs_1,h=old_hs_1),
-    #                                     tf.nn.rnn_cell.LSTMStateTuple(c=old_hs_2,h=old_hs_2))), 
-    #                                 dtype=config.dtype)
-    # ==============================================
 
     hidden_states, final_state = tf.nn.static_rnn(cell, inp, 
                                     initial_state=DynStateTuple(A=old_hs_1, h=old_hs_2),
