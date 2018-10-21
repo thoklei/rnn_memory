@@ -1,8 +1,7 @@
 import tensorflow as tf
 import os
 
-
-def read_dataset(path, mode, batch_size, repeat, sequence_length):
+def read_dataset(path, mode, batch_size, repeat):
     """
     Reads data from .tfrecords-file, decodes it and returns the dataset as a
     tf.data.TFRecordDataset.
@@ -17,22 +16,27 @@ def read_dataset(path, mode, batch_size, repeat, sequence_length):
     def _parse_function(example_proto):
         """
         """
-        features = {"raw_sequence": tf.FixedLenFeature([], tf.string, default_value="")}
+        features = {"raw_sequence": tf.FixedLenFeature([], tf.string, default_value=""),
+                    "sentence_length": tf.FixedLenFeature([], tf.string, default_value="")}
         parsed_features = tf.parse_single_example(example_proto, features)
 
+        length = tf.decode_raw(parsed_features["sentence_length"], tf.int64)
+        length.set_shape(1)
+        length = tf.reshape(length, shape=[1])
+        length = tf.cast(length, tf.int32)
+        #print(length)
+
         seq = tf.decode_raw(parsed_features["raw_sequence"], tf.int64)
-        print(seq)
-        seq.set_shape(sequence_length)
-        print("seq again:",seq)
-        seq = tf.reshape(seq, [sequence_length,1])
+        seq.set_shape(35)
+        seq = tf.reshape(seq, [35])
         seq = tf.cast(seq, tf.int32)
 
-        return seq, seq
+        return {'sequence':seq,'length':length}, seq
 
     training_path = os.path.join(path, mode+'.tfrecords')
     training_dataset = tf.data.TFRecordDataset(training_path)
-    training_dataset = training_dataset.map(_parse_function, num_parallel_calls=1)
-    #training_dataset = training_dataset.shuffle(100)
+    training_dataset = training_dataset.map(_parse_function, num_parallel_calls=4)
+    training_dataset = training_dataset.shuffle(100)
     if(repeat):
         training_dataset = training_dataset.repeat()
     training_dataset = training_dataset.apply(tf.contrib.data.batch_and_drop_remainder(batch_size))
@@ -42,7 +46,7 @@ def read_dataset(path, mode, batch_size, repeat, sequence_length):
     
 
 def input_fn(path, config, mode, repeat):
-    return read_dataset(path, mode, config.batchsize, repeat, sequence_length=config.sequence_length)
+    return read_dataset(path, mode, config.batchsize, repeat)
 
 
 def train_input_fn(path, config):
