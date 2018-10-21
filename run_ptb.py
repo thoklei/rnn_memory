@@ -3,6 +3,7 @@ import os
 import tensorflow as tf
 import sys
 import numpy as np
+import collections
 
 from configs import *
 import model_functions
@@ -26,10 +27,8 @@ flags.DEFINE_string("save_path", None,
     "Model output directory. This is where event files and checkpoints are stored.")
 flags.DEFINE_bool("use_bfp16", False,
     "Train using 16-bit truncated floats instead of 32-bit float")
-flags.DEFINE_string("model", "fast_weights",
-    "Which type of Model to use. Options are: rnn, lstm, irnn, fast_weights, conceptor")
-flags.DEFINE_string("mode", "static",
-    "Which RNN unrolling mechanism to choose. Options are: static, dynamic")
+flags.DEFINE_bool("train", True,
+    "Whether to train the model or not. If not, text is generated from checkpoint.")
     
 FLAGS = flags.FLAGS
 
@@ -54,29 +53,28 @@ def ptb_model_fn(features, labels, mode, params):
     """
     Model Function
     """
-    global final_state
     global dropout
-    global old_hs_1
-    global old_hs_2
-    global learning_rate
+    #global learning_rate
 
     config = params['config']
 
     dropout = tf.placeholder(dtype=config.dtype)
+    sequence_length = features['length']
+    features = features['sequence']
 
-    features = tf.reshape(features, [-1, config.sequence_length])
+    features = tf.reshape(features, [-1, config.sequence_length]) # to get batchsize x 35
 
-    old_hs_1 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize,config.layer_dim])
-    old_hs_2 = tf.placeholder(dtype=config.dtype, shape=[config.batchsize,config.layer_dim])
-
-    learning_rate = tf.placeholder(dtype=config.dtype, shape=())
+    #learning_rate = tf.placeholder(dtype=config.dtype, shape=())
 
     embedding = tf.get_variable(
           "embedding", [config.vocab_size, config.embedding_size], 
           dtype=config.dtype)
-    inputs = tf.nn.embedding_lookup(embedding, features)
+    inputs = tf.nn.embedding_lookup(embedding, features) # should be batchsize x 35 x 500
 
     inputs = tf.nn.dropout(inputs, dropout)
+
+    #labels, sequence_length = labels
+    sequence_length = tf.reshape(sequence_length,shape=[-1])
 
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         labels = tf.reshape(labels, [-1,config.sequence_length])[:,1:]
@@ -86,12 +84,8 @@ def ptb_model_fn(features, labels, mode, params):
                 tf.nn.rnn_cell.LSTMCell(config.layer_dim, initializer=tf.random_uniform_initializer(minval=-0.05, maxval=0.05), dtype=config.dtype),output_keep_prob=dropout) for _ in range(2)])
 
     inp = tf.unstack(tf.cast(inputs, config.dtype), axis=1) # should yield list of length sequence_length-1
-
-    hidden_states, final_state = tf.nn.static_rnn(cell, inp, 
-                                    initial_state=(
-                                        (tf.nn.rnn_cell.LSTMStateTuple(c=old_hs_1,h=old_hs_1),
-                                        tf.nn.rnn_cell.LSTMStateTuple(c=old_hs_2,h=old_hs_2))), 
-                                    dtype=config.dtype)
+    sequence_length = tf.Print(sequence_length, [sequence_length])
+    hidden_states, final_state = tf.nn.static_rnn(cell, inp, sequence_length=sequence_length, dtype=config.dtype)
 
     softmax_w = tf.get_variable("softmax_w", [config.layer_dim, config.vocab_size], dtype=config.dtype)
     softmax_b = tf.get_variable("softmax_b", [config.vocab_size], dtype=config.dtype)
@@ -138,7 +132,7 @@ def ptb_model_fn(features, labels, mode, params):
     # Create training op.
     assert mode == tf.estimator.ModeKeys.TRAIN
 
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+    optimizer = tf.train.AdamOptimizer()#tf.train.GradientDescentOptimizer(learning_rate)
     if(config.clip_gradients):
         gvs = optimizer.compute_gradients(loss)
         capped_gvs = [(tf.clip_by_norm(grad, config.clip_value_norm), var) for grad, var in gvs]
@@ -163,34 +157,9 @@ def main(_):
         model_fn=ptb_model_fn,
         model_dir=FLAGS.save_path,
         params={
-            'model': FLAGS.model,
             'config': config
         })
 
-
-    class FeedHook(tf.train.SessionRunHook):
-
-        def __init__(self,initial_lr):
-            super(FeedHook, self).__init__()
-            self.current_lr = initial_lr
-
-        def adjust_lr(self,new_val):
-            self.current_lr = new_val
-
-        def before_run(self, run_context):
-            return tf.train.SessionRunArgs(
-                fetches=final_state,
-                feed_dict={
-                    old_hs_1:hidden_1,
-                    old_hs_2:hidden_2,
-                    learning_rate:self.current_lr})
-
-        def after_run(self, run_context, run_values):
-            global hidden_1
-            global hidden_2
-            hidden_1_state, hidden_2_state = run_values.results
-            hidden_1 = hidden_1_state.c
-            hidden_2 = hidden_2_state.c
 
     class DropoutHook(tf.train.SessionRunHook):
 
@@ -204,7 +173,6 @@ def main(_):
                 feed_dict={
                     dropout:self.dropout})
 
-    feed_hook = FeedHook(config.learning_rate)
     dropout_train_hook = DropoutHook(config.keep_prob)
     dropout_eval_hook = DropoutHook(1.0)
 
@@ -212,42 +180,74 @@ def main(_):
         checkpoint_dir=FLAGS.save_path,
         save_steps=1000)
 
-    for epoch in range(config.num_epochs):
+    if(FLAGS.train):
+        for epoch in range(config.num_epochs):
 
-        hidden_1 = np.zeros([config.batchsize, config.layer_dim])
-        hidden_2 = np.zeros([config.batchsize, config.layer_dim])
+            # Train the Model.
+            classifier.train(
+                input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, config),
+                hooks = [dropout_train_hook, checkpoint_hook],
+                steps=1327) 
 
-        # Train the Model.
-        classifier.train(
-            input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, config),
-            hooks = [feed_hook, dropout_train_hook, checkpoint_hook],
-            steps=1327) 
+            #Evaluate the model.
+            eval_result = classifier.evaluate(
+                input_fn=lambda:d_prov.validation_input_fn(FLAGS.data_path, config),
+                name="validation",
+                hooks = [dropout_eval_hook],
+                steps=105)
 
-        if(epoch > 6):
-            feed_hook.adjust_lr(feed_hook.current_lr/1.2)
+            print('\nValidation set accuracy after epoch {}: {accuracy:0.3f}\n'.format(epoch+1,**eval_result))
 
-        hidden_1 = np.zeros([config.batchsize, config.layer_dim])
-        hidden_2 = np.zeros([config.batchsize, config.layer_dim])
-
-        #Evaluate the model.
         eval_result = classifier.evaluate(
-            input_fn=lambda:d_prov.validation_input_fn(FLAGS.data_path, config),
-            name="validation",
-            hooks = [feed_hook, dropout_eval_hook],
-            steps=105)
+            input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, config),
+            name="test",
+            hooks = [dropout_eval_hook],
+            steps=117)
+        
+        print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
 
-        print('\nValidation set accuracy after epoch {}: {accuracy:0.3f}\n'.format(epoch+1,**eval_result))
 
-    hidden_1 = np.zeros([config.batchsize, config.layer_dim])
-    hidden_2 = np.zeros([config.batchsize, config.layer_dim])
+    def _build_vocab():
 
-    eval_result = classifier.evaluate(
-        input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, config),
-        name="test",
-        hooks = [feed_hook, dropout_eval_hook],
-        steps=117)
-    
-    print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
+        def _read_words(filename):
+            with tf.gfile.GFile(filename, "r") as f:
+                return f.read().replace('\n', "<eos>").split()
+
+        data = _read_words("/Users/thomasklein/Uni/Bachelorarbeit/ptbtext/ptb.train.txt")
+
+        counter = collections.Counter(data)
+        count_pairs = sorted(counter.items(), key=lambda x: (-x[1], x[0]))
+
+        words, _ = list(zip(*count_pairs))
+        word_to_id = dict(zip(words, range(len(words))))
+
+        return word_to_id
+
+    word_to_id = _build_vocab()
+
+    cue = ['the', 'meaning', 'of', 'life', 'is']
+    encoded_cue = [word_to_id[word] for word in cue] + [0]*(config.sequence_length - len(cue))
+
+
+    generated_text = classifier.predict(
+        input_fn = lambda:d_prov.test_input_fn(FLAGS.data_path, config),
+        hooks=[dropout_eval_hook]
+    )
+    # tf.estimator.inputs.numpy_input_fn(
+    #                 x={"features": np.asarray(encoded_cue), 
+    #                    "length": np.asarray(5)},
+    #                 shuffle=False
+    #             ),
+
+    def create_rev_dict(words_to_ids):
+        ids_to_words = {v: k for k, v in words_to_ids.items()}
+        return ids_to_words
+
+    ids_to_words = create_rev_dict(word_to_id)
+    print(generated_text)
+    #print([ids_to_words[id] for id in [ids for ids in generated_text]])
+    for ids in generated_text:
+        print([ids_to_words[id] for id in ids])
     
 
 if __name__ == '__main__':

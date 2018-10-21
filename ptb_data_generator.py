@@ -9,38 +9,42 @@ flags.DEFINE_string("data_path", None,
     "Where the dataset is stored. Make sure to point to the correct type (MNIST, AR)")
 flags.DEFINE_string("save_path", None,
     "Model output directory. This is where event files and checkpoints are stored.")
-flags.DEFINE_integer("length", 35,
-    "The sequence length do be used, defaults to 30")
-flags.DEFINE_integer("batchsize",20,
-    "The batchsize to be generated. See big comment above for explanation.")
 
 FLAGS = flags.FLAGS
 
-def write_ptb_to_tfrecords(data_path, save_path, sequence_length, batchsize):
-    train_data, valid_data, test_data, _ = ptb_raw_data(data_path=data_path, sequence_length=sequence_length, batchsize=batchsize) #lists of ints
+def write_ptb_to_tfrecords(data_path, save_path):
+    train_data, valid_data, test_data, _ = ptb_raw_data(data_path=data_path) #lists of ints
     
-    def _convert_to(data_set, name, sequence_length):
-
-        def chunks(l, n):
-            """Yield successive n-sized chunks from l."""
-            for i in range(0, len(l), n):
-                yield l[i:i + n]
-
+    def _convert_to(data_set, name):
         filename = os.path.join(save_path, name + '.tfrecords')
         print('Writing', filename)
 
         with tf.python_io.TFRecordWriter(filename) as writer:
-            for chunk in chunks(data_set, sequence_length):
-                byte_chunk = np.asarray(chunk).tostring()
+            for sentence in data_set:
+
+                def pad(sentence,length,sequence_length):
+                    if(length>sequence_length):
+                        return sentence[0:sequence_length]
+                    if(length<sequence_length):
+                        return sentence + [0] * (sequence_length - length)
+                    else:
+                        return sentence
+
+                length = len(sentence)
+                padded_sentence = pad(sentence,length,35)
+                byte_sentence = np.asarray(padded_sentence).tostring()
+
                 example = tf.train.Example(features=tf.train.Features(feature={
-                    'raw_sequence': tf.train.Feature(bytes_list = tf.train.BytesList(value=[byte_chunk]))
+                    'raw_sequence': tf.train.Feature(bytes_list = tf.train.BytesList(value=[byte_sentence])),
+                    'sentence_length':tf.train.Feature(bytes_list = tf.train.BytesList(value=[np.asarray(length).tostring()]))
                 }))
                 writer.write(example.SerializeToString())
                 
 
-    _convert_to(train_data, 'train', sequence_length)
-    _convert_to(test_data, 'test', sequence_length)
-    _convert_to(valid_data, 'validation', sequence_length)
+    _convert_to(train_data, 'train')
+    _convert_to(test_data, 'test')
+    _convert_to(valid_data, 'validation')
+
 
 def ptb_raw_data(data_path=None, sequence_length=None, batchsize=None):
     """Load PTB raw data from data directory "data_path".
@@ -66,9 +70,9 @@ def ptb_raw_data(data_path=None, sequence_length=None, batchsize=None):
     test_path = os.path.join(data_path, "ptb.test.txt")
 
     word_to_id = _build_vocab(train_path)
-    train_data = _file_to_word_ids(train_path, word_to_id, sequence_length, batchsize)
-    valid_data = _file_to_word_ids(valid_path, word_to_id, sequence_length, batchsize)
-    test_data  = _file_to_word_ids(test_path, word_to_id, sequence_length, batchsize)
+    train_data = _file_to_word_ids(train_path, word_to_id)
+    valid_data = _file_to_word_ids(valid_path, word_to_id)
+    test_data  = _file_to_word_ids(test_path, word_to_id)
     vocabulary = len(word_to_id)
     return train_data, valid_data, test_data, vocabulary
 
@@ -85,49 +89,30 @@ def _build_vocab(filename):
     return word_to_id
 
 
-def _file_to_word_ids_old(filename, word_to_id):
-    data = _read_words(filename)
-    return [word_to_id[word] for word in data if word in word_to_id]
+def _file_to_word_ids(filename, word_to_id):
+    """
+    Returns list of lists of integers (that encode words)
+    """
+    data = _read_sentences(filename)
+    return [[word_to_id[word] for word in sentence if word in word_to_id] for sentence in data] # I'm sorry
 
 
-def _file_to_word_ids(filename, word_to_id, sequence_length, batchsize):
-    raw_data = _read_words(filename)
-    data = the_ben_transformation(raw_data, sequence_length, batchsize)
-    print("Length of new data: ",len(data))
-    return [word_to_id[word] for word in data if word in word_to_id]
+def _read_sentences(filename):
+    """
+    Returns list of lists of words
+    """
+    with tf.gfile.GFile(filename, "r") as f:
+        return [sentence.split() for sentence in f.read().split('\n')]
 
-
-def construct_sequence_iter(data, sequence_length, batchsize):
-    length = len(data)
-    chunk = batchsize * sequence_length
-    rep = int((length - (length % chunk))/chunk)
-    sequence_starts = np.arange(batchsize*rep)*sequence_length 
-    new_data = []
-    for add in range(rep):
-        i = 0
-        while(i < len(sequence_starts)):
-            s = sequence_starts[i+add]
-            new_data = new_data+data[s:s+sequence_length]
-            i += rep
-    return new_data        
-
-
-def the_ben_transformation(data, sequence_length, batchsize):
-    return [data[j+k+(i*sequence_length)]
-                for i in range(len(data) // (sequence_length * batchsize))
-                for j in range(0, (len(data) // (sequence_length * batchsize))*batchsize*sequence_length, (len(data) // (sequence_length * batchsize)) * sequence_length)
-                for k in range(sequence_length)]
 
 def _read_words(filename):
     with tf.gfile.GFile(filename, "r") as f:
-        return f.read().replace("\n", "<eos>").split()
+        return f.read().replace('\n', "<eos>").split()
 
 
 def main():
-    write_ptb_to_tfrecords(FLAGS.data_path, FLAGS.save_path, FLAGS.length, FLAGS.batchsize)
+    write_ptb_to_tfrecords(FLAGS.data_path, FLAGS.save_path)
 
-def get_data():
-    return list(np.arange(929000))
 
 if __name__ == '__main__':
     main()
