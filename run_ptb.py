@@ -54,7 +54,7 @@ def ptb_model_fn(features, labels, mode, params):
     Model Function
     """
     global dropout
-    #global learning_rate
+    global learning_rate
 
     config = params['config']
 
@@ -64,7 +64,7 @@ def ptb_model_fn(features, labels, mode, params):
 
     features = tf.reshape(features, [-1, config.sequence_length]) # to get batchsize x 35
 
-    #learning_rate = tf.placeholder(dtype=config.dtype, shape=())
+    learning_rate = tf.placeholder(dtype=config.dtype, shape=())
 
     embedding = tf.get_variable(
           "embedding", [config.vocab_size, config.embedding_size], 
@@ -84,7 +84,6 @@ def ptb_model_fn(features, labels, mode, params):
                 tf.nn.rnn_cell.LSTMCell(config.layer_dim, initializer=tf.random_uniform_initializer(minval=-0.05, maxval=0.05), dtype=config.dtype),output_keep_prob=dropout) for _ in range(2)])
 
     inp = tf.unstack(tf.cast(inputs, config.dtype), axis=1) # should yield list of length sequence_length-1
-    sequence_length = tf.Print(sequence_length, [sequence_length])
     hidden_states, final_state = tf.nn.static_rnn(cell, inp, sequence_length=sequence_length, dtype=config.dtype)
 
     softmax_w = tf.get_variable("softmax_w", [config.layer_dim, config.vocab_size], dtype=config.dtype)
@@ -132,7 +131,7 @@ def ptb_model_fn(features, labels, mode, params):
     # Create training op.
     assert mode == tf.estimator.ModeKeys.TRAIN
 
-    optimizer = tf.train.AdamOptimizer()#tf.train.GradientDescentOptimizer(learning_rate)
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
     if(config.clip_gradients):
         gvs = optimizer.compute_gradients(loss)
         capped_gvs = [(tf.clip_by_norm(grad, config.clip_value_norm), var) for grad, var in gvs]
@@ -160,6 +159,21 @@ def main(_):
             'config': config
         })
 
+    class FeedHook(tf.train.SessionRunHook):
+
+        def __init__(self,initial_lr):
+            super(FeedHook, self).__init__()
+            self.current_lr = initial_lr
+
+        def adjust_lr(self,new_val):
+            self.current_lr = new_val
+
+        def before_run(self, run_context):
+            return tf.train.SessionRunArgs(
+                fetches=None,
+                feed_dict={
+                    learning_rate:self.current_lr})
+
 
     class DropoutHook(tf.train.SessionRunHook):
 
@@ -173,6 +187,7 @@ def main(_):
                 feed_dict={
                     dropout:self.dropout})
 
+    lr_hook = FeedHook(config.learning_rate)
     dropout_train_hook = DropoutHook(config.keep_prob)
     dropout_eval_hook = DropoutHook(1.0)
 
@@ -186,8 +201,11 @@ def main(_):
             # Train the Model.
             classifier.train(
                 input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, config),
-                hooks = [dropout_train_hook, checkpoint_hook],
+                hooks = [dropout_train_hook, checkpoint_hook, lr_hook],
                 steps=1327) 
+
+            if(epoch > 6):
+                lr_hook.adjust_lr(lr_hook.current_lr/1.2)
 
             #Evaluate the model.
             eval_result = classifier.evaluate(

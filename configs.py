@@ -104,8 +104,8 @@ class Default_PTB_Config(DefaultConfig):
         self.layer_dim = 650
         self.embedding_size = 650
         self.vocab_size = 10000
-        self.keep_prob = 0.45 # for dropout
-        self.clip_gradients = False
+        self.keep_prob = 0.5 # for dropout
+        self.clip_gradients = True
         self.clip_value_min = -5
         self.clip_value_max = 5
         self.clip_value_norm = 5
