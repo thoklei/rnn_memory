@@ -81,7 +81,7 @@ def ptb_model_fn(features, labels, mode, params):
 
     cell = tf.nn.rnn_cell.MultiRNNCell(
             [tf.contrib.rnn.DropoutWrapper(
-                tf.nn.rnn_cell.LSTMCell(config.layer_dim, initializer=tf.random_uniform_initializer(minval=-0.05, maxval=0.05), dtype=config.dtype),output_keep_prob=dropout) for _ in range(2)])
+                tf.nn.rnn_cell.LSTMCell(config.layer_dim, initializer=tf.random_uniform_initializer(minval=-0.05, maxval=0.05)),output_keep_prob=dropout) for _ in range(2)])
 
     inp = tf.unstack(tf.cast(inputs, config.dtype), axis=1) # should yield list of length sequence_length-1
     hidden_states, final_state = tf.nn.static_rnn(cell, inp, sequence_length=sequence_length, dtype=config.dtype)
