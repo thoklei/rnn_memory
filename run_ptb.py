@@ -109,7 +109,7 @@ def ptb_model_fn(features, labels, mode, params):
     loss = tf.reduce_mean(tf.contrib.seq2seq.sequence_loss(
         logits=tf.cast(logits[:,:-1],tf.float32),
         targets=labels,
-        weights=tf.ones([config.batchsize, config.sequence_length-1], dtype=tf.float32),
+        weights=tf.sequence_mask(sequence_length, config.sequence_length-1, dtype=tf.float32),
         average_across_timesteps=False,
         average_across_batch=True))
     #loss = tf.losses.mean_squared_error(labels=labels, predictions=logits)
