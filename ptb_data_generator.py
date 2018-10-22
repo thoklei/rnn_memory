@@ -24,7 +24,8 @@ def write_ptb_to_tfrecords(data_path, save_path):
         with tf.python_io.TFRecordWriter(filename) as writer:
             for sentence in data_set:
 
-                def pad(sentence,length,sequence_length):
+                def pad(sentence,sequence_length):
+                    length = len(sentence)
                     if(length>sequence_length):
                         return sentence[0:sequence_length]
                     elif(length<sequence_length):
@@ -32,13 +33,13 @@ def write_ptb_to_tfrecords(data_path, save_path):
                     else:
                         return sentence
 
-                length = len(sentence)
-                padded_sentence = pad(sentence,length,CUTOFF_LENGTH)
+                
+                padded_sentence = pad(sentence,CUTOFF_LENGTH)
                 byte_sentence = np.asarray(padded_sentence).tostring()
 
                 example = tf.train.Example(features=tf.train.Features(feature={
                     'raw_sequence': tf.train.Feature(bytes_list = tf.train.BytesList(value=[byte_sentence])),
-                    'sentence_length':tf.train.Feature(bytes_list = tf.train.BytesList(value=[np.asarray(length).tostring()]))
+                    'sentence_length':tf.train.Feature(bytes_list = tf.train.BytesList(value=[np.asarray(len(sentence)).tostring()]))
                 }))
                 writer.write(example.SerializeToString())
                 

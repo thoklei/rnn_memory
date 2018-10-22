@@ -98,7 +98,7 @@ class Default_PTB_Config(DefaultConfig):
         super(Default_PTB_Config,self).__init__()
         self.num_epochs = 39
         self.batchsize = 32
-        self.sequence_length = 35
+        #self.sequence_length = 35
         self.input_dim = 1
         self.output_dim = 10000
         self.layer_dim = 650

@@ -126,7 +126,7 @@ def ptb_model_fn(features, labels, mode, params):
 
     if mode == tf.estimator.ModeKeys.EVAL:
         return tf.estimator.EstimatorSpec(
-            mode, loss=perplexity, eval_metric_ops=metrics)
+            mode, loss=loss, eval_metric_ops=metrics)
 
     # Create training op.
     assert mode == tf.estimator.ModeKeys.TRAIN
@@ -160,7 +160,10 @@ def main(_):
         })
 
     class FeedHook(tf.train.SessionRunHook):
-
+        """
+        Feeds the learning rate into the model function to enable adaptive learning rates.
+        Not relevant if model is trained using Adam.
+        """
         def __init__(self,initial_lr):
             super(FeedHook, self).__init__()
             self.current_lr = initial_lr
@@ -195,32 +198,38 @@ def main(_):
         checkpoint_dir=FLAGS.save_path,
         save_steps=1000)
 
+
+    #Evaluate the model.
+    eval_result = classifier.evaluate(
+        input_fn=lambda:d_prov.validation_input_fn(FLAGS.data_path, config),
+        name="validation",
+        hooks = [dropout_eval_hook],
+        steps=100)
+
     if(FLAGS.train):
         for epoch in range(config.num_epochs):
 
             # Train the Model.
             classifier.train(
                 input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, config),
-                hooks = [dropout_train_hook, checkpoint_hook, lr_hook],
-                steps=1327) 
+                hooks = [dropout_train_hook, checkpoint_hook, lr_hook]) 
 
             if(epoch > 6):
                 lr_hook.adjust_lr(lr_hook.current_lr/1.2)
 
-            #Evaluate the model.
+            #Evaluate the model, once before the training
             eval_result = classifier.evaluate(
                 input_fn=lambda:d_prov.validation_input_fn(FLAGS.data_path, config),
                 name="validation",
                 hooks = [dropout_eval_hook],
-                steps=105)
+                steps=100)
 
             print('\nValidation set accuracy after epoch {}: {accuracy:0.3f}\n'.format(epoch+1,**eval_result))
 
         eval_result = classifier.evaluate(
             input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, config),
             name="test",
-            hooks = [dropout_eval_hook],
-            steps=117)
+            hooks = [dropout_eval_hook])
         
         print('\nTest set accuracy: {accuracy:0.3f}\n'.format(**eval_result))
 
