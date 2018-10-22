@@ -8,6 +8,7 @@ import collections
 from configs import *
 import model_functions
 from fast_weight_cell import FastWeightCell
+from ptb_data_generator import CUTOFF_LENGTH
 
 if(tf.__version__ == '1.4.0'):
     print("using old data provider")
@@ -62,7 +63,7 @@ def ptb_model_fn(features, labels, mode, params):
     sequence_length = features['length']
     features = features['sequence']
 
-    features = tf.reshape(features, [-1, config.sequence_length]) # to get batchsize x 35
+    features = tf.reshape(features, [-1, CUTOFF_LENGTH]) # to get batchsize x 35
 
     learning_rate = tf.placeholder(dtype=config.dtype, shape=())
 
@@ -75,13 +76,12 @@ def ptb_model_fn(features, labels, mode, params):
 
     #labels, sequence_length = labels
     sequence_length = tf.reshape(sequence_length,shape=[-1])
-
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
-        labels = tf.reshape(labels, [-1,config.sequence_length])[:,1:]
+        labels = labels[:,1:]
 
     cell = tf.nn.rnn_cell.MultiRNNCell(
             [tf.contrib.rnn.DropoutWrapper(
-                tf.nn.rnn_cell.LSTMCell(config.layer_dim, initializer=tf.random_uniform_initializer(minval=-0.05, maxval=0.05)),output_keep_prob=dropout) for _ in range(2)])
+                tf.nn.rnn_cell.LSTMCell(config.layer_dim),output_keep_prob=dropout) for _ in range(2)])
 
     inp = tf.unstack(tf.cast(inputs, config.dtype), axis=1) # should yield list of length sequence_length-1
     hidden_states, final_state = tf.nn.static_rnn(cell, inp, sequence_length=sequence_length, dtype=config.dtype)
@@ -109,7 +109,7 @@ def ptb_model_fn(features, labels, mode, params):
     loss = tf.reduce_mean(tf.contrib.seq2seq.sequence_loss(
         logits=tf.cast(logits[:,:-1],tf.float32),
         targets=labels,
-        weights=tf.sequence_mask(sequence_length, config.sequence_length-1, dtype=tf.float32),
+        weights=tf.sequence_mask(sequence_length, CUTOFF_LENGTH-1, dtype=tf.float32),
         average_across_timesteps=False,
         average_across_batch=True))
     #loss = tf.losses.mean_squared_error(labels=labels, predictions=logits)
@@ -131,7 +131,7 @@ def ptb_model_fn(features, labels, mode, params):
     # Create training op.
     assert mode == tf.estimator.ModeKeys.TRAIN
 
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+    optimizer = tf.train.AdamOptimizer()#GradientDescentOptimizer(learning_rate)
     if(config.clip_gradients):
         gvs = optimizer.compute_gradients(loss)
         capped_gvs = [(tf.clip_by_norm(grad, config.clip_value_norm), var) for grad, var in gvs]
@@ -244,7 +244,7 @@ def main(_):
     word_to_id = _build_vocab()
 
     cue = ['the', 'meaning', 'of', 'life', 'is']
-    encoded_cue = [word_to_id[word] for word in cue] + [0]*(config.sequence_length - len(cue))
+    encoded_cue = [word_to_id[word] for word in cue] + [0]*(CUTOFF_LENGTH - len(cue))
 
 
     generated_text = classifier.predict(

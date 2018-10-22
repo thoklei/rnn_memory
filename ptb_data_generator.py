@@ -5,12 +5,14 @@ import numpy as np
 
 flags = tf.flags # cmd line FLAG manager for tensorflow
 
-flags.DEFINE_string("data_path", None,
+flags.DEFINE_string("data_p", None,
     "Where the dataset is stored. Make sure to point to the correct type (MNIST, AR)")
-flags.DEFINE_string("save_path", None,
+flags.DEFINE_string("save_p", None,
     "Model output directory. This is where event files and checkpoints are stored.")
 
 FLAGS = flags.FLAGS
+
+CUTOFF_LENGTH = 55
 
 def write_ptb_to_tfrecords(data_path, save_path):
     train_data, valid_data, test_data, _ = ptb_raw_data(data_path=data_path) #lists of ints
@@ -25,13 +27,13 @@ def write_ptb_to_tfrecords(data_path, save_path):
                 def pad(sentence,length,sequence_length):
                     if(length>sequence_length):
                         return sentence[0:sequence_length]
-                    if(length<sequence_length):
+                    elif(length<sequence_length):
                         return sentence + [0] * (sequence_length - length)
                     else:
                         return sentence
 
                 length = len(sentence)
-                padded_sentence = pad(sentence,length,35)
+                padded_sentence = pad(sentence,length,CUTOFF_LENGTH)
                 byte_sentence = np.asarray(padded_sentence).tostring()
 
                 example = tf.train.Example(features=tf.train.Features(feature={
@@ -91,10 +93,16 @@ def _build_vocab(filename):
 
 def _file_to_word_ids(filename, word_to_id):
     """
+    This is a remnant of an experiment where I tried to 
     Returns list of lists of integers (that encode words)
     """
     data = _read_sentences(filename)
     return [[word_to_id[word] for word in sentence if word in word_to_id] for sentence in data] # I'm sorry
+
+
+def _file_to_word_ids_old(filename, word_to_id):
+    data = _read_words(filename)
+    return [word_to_id[word] for word in data]
 
 
 def _read_sentences(filename):

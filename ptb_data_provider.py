@@ -1,6 +1,6 @@
 import tensorflow as tf
 import os
-
+from ptb_data_generator import CUTOFF_LENGTH
 
 def read_dataset(path, mode, batch_size, repeat):
     """
@@ -28,8 +28,8 @@ def read_dataset(path, mode, batch_size, repeat):
         #print(length)
 
         seq = tf.decode_raw(parsed_features["raw_sequence"], tf.int64)
-        seq.set_shape(35)
-        seq = tf.reshape(seq, [35])
+        seq.set_shape(CUTOFF_LENGTH)
+        seq = tf.reshape(seq, [CUTOFF_LENGTH])
         seq = tf.cast(seq, tf.int32)
 
         return {'sequence':seq,'length':length}, seq
