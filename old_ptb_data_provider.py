@@ -58,4 +58,4 @@ def validation_input_fn(path, config):
 
 
 def test_input_fn(path, config):
-    return input_fn(path, config, 'test', True)
+    return input_fn(path, config, 'test', False)

@@ -195,7 +195,7 @@ def main(_):
 
     checkpoint_hook = tf.train.CheckpointSaverHook(
         checkpoint_dir=FLAGS.save_path,
-        save_steps=50)
+        save_steps=1000)
 
 
     if(FLAGS.train):
@@ -252,8 +252,6 @@ def main(_):
 
     for _ in range(CUTOFF_LENGTH-len(cue)):
         encoded_cue = [word_to_id[word] for word in cue] + [0]*(CUTOFF_LENGTH - len(cue))
-        print(encoded_cue)
-        print("length:",len(cue))
         generated_text = classifier.predict(
             input_fn = tf.estimator.inputs.numpy_input_fn(
                         x={'sequence':np.reshape(np.asarray(encoded_cue),[1,CUTOFF_LENGTH]),'length':np.asarray([len(cue)])},
