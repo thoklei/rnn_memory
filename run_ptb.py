@@ -105,17 +105,19 @@ def ptb_model_fn(features, labels, mode, params):
         return tf.estimator.EstimatorSpec(mode, predictions=predictions)
     
     # seq2seq loss doesn't work with float16
-    loss = tf.reduce_mean(tf.contrib.seq2seq.sequence_loss(
+    print("logits:",logits[:,:-1]) # expecting batchsize x sequence_length-1 x 10.000
+    loss = tf.contrib.seq2seq.sequence_loss(
         logits=tf.cast(logits[:,:-1],tf.float32),
         targets=labels,
         weights=tf.sequence_mask(sequence_length, CUTOFF_LENGTH-1, dtype=tf.float32),
-        average_across_timesteps=False,
-        average_across_batch=True))
+        average_across_timesteps=True,
+        average_across_batch=True)
     #loss = tf.losses.mean_squared_error(labels=labels, predictions=logits)
-
+    labels = tf.Print(labels,[labels])
+    predictions = tf.argmax(logits[:,:-1],axis=2)
     # Compute evaluation metrics.
     accuracy = tf.metrics.accuracy(labels=labels,
-                                   predictions=tf.argmax(logits[:,:-1],axis=2),
+                                   predictions=predictions,#tf.argmax(logits[:,:-1],axis=2),
                                    name='acc_op')
     perplexity = tf.exp(loss)
     metrics = {'accuracy': accuracy}
@@ -130,7 +132,7 @@ def ptb_model_fn(features, labels, mode, params):
     # Create training op.
     assert mode == tf.estimator.ModeKeys.TRAIN
 
-    optimizer = tf.train.AdamOptimizer()#GradientDescentOptimizer(learning_rate)
+    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
     if(config.clip_gradients):
         gvs = optimizer.compute_gradients(loss)
         capped_gvs = [(tf.clip_by_norm(grad, config.clip_value_norm), var) for grad, var in gvs]
@@ -246,7 +248,8 @@ def main(_):
 
     word_to_id, id_to_word = _build_vocab()
 
-    input_string = "The meaning of life is"
+    #input_string = "The meaning of life is"
+    input_string = "this confusion effectively halted one form of program trading stock index arbitrage"
     cue = input_string.lower().split()
     print(cue)
 
