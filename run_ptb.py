@@ -117,7 +117,7 @@ def ptb_model_fn(features, labels, mode, params):
     # Compute evaluation metrics.
     accuracy = tf.metrics.accuracy(labels=labels,
                                    predictions=predictions,#tf.argmax(logits[:,:-1],axis=2),
-                                   weights=sequence_length,
+                                   weights=tf.sequence_mask(sequence_length, CUTOFF_LENGTH-1, dtype=tf.float32),
                                    name='acc_op')
     perplexity = tf.exp(loss)
     metrics = {'accuracy': accuracy}
@@ -248,8 +248,8 @@ def main(_):
 
     word_to_id, id_to_word = _build_vocab()
 
-    #input_string = "The meaning of life is"
-    input_string = "this confusion effectively halted one form of program trading stock index arbitrage"
+    input_string = "The meaning of life is"
+    #input_string = "this confusion effectively halted one form of program trading stock index arbitrage"
     cue = input_string.lower().split()
     print(cue)
 
