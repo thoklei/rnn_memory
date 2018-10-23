@@ -105,7 +105,7 @@ def ptb_model_fn(features, labels, mode, params):
         return tf.estimator.EstimatorSpec(mode, predictions=predictions)
     
     # seq2seq loss doesn't work with float16
-    print("logits:",logits[:,:-1]) # expecting batchsize x sequence_length-1 x 10.000
+    # print("logits:",logits[:,:-1]) # expecting batchsize x sequence_length-1 x 10.000
     loss = tf.contrib.seq2seq.sequence_loss(
         logits=tf.cast(logits[:,:-1],tf.float32),
         targets=labels,
@@ -113,11 +113,11 @@ def ptb_model_fn(features, labels, mode, params):
         average_across_timesteps=True,
         average_across_batch=True)
     #loss = tf.losses.mean_squared_error(labels=labels, predictions=logits)
-    labels = tf.Print(labels,[labels])
     predictions = tf.argmax(logits[:,:-1],axis=2)
     # Compute evaluation metrics.
     accuracy = tf.metrics.accuracy(labels=labels,
                                    predictions=predictions,#tf.argmax(logits[:,:-1],axis=2),
+                                   weights=sequence_length,
                                    name='acc_op')
     perplexity = tf.exp(loss)
     metrics = {'accuracy': accuracy}
