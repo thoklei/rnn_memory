@@ -102,7 +102,6 @@ def ptb_model_fn(features, labels, mode, params):
 
     if mode == tf.estimator.ModeKeys.PREDICT:
         predictions = tf.argmax(logits,axis=2)
-        print("predictions:",predictions)# expecting batchsize x sequence_length
         return tf.estimator.EstimatorSpec(mode, predictions=predictions)
     
     # seq2seq loss doesn't work with float16
@@ -196,15 +195,8 @@ def main(_):
 
     checkpoint_hook = tf.train.CheckpointSaverHook(
         checkpoint_dir=FLAGS.save_path,
-        save_steps=1000)
+        save_steps=50)
 
-
-    #Evaluate the model.
-    eval_result = classifier.evaluate(
-        input_fn=lambda:d_prov.validation_input_fn(FLAGS.data_path, config),
-        name="validation",
-        hooks = [dropout_eval_hook],
-        steps=100)
 
     if(FLAGS.train):
         for epoch in range(config.num_epochs):
@@ -248,33 +240,38 @@ def main(_):
         words, _ = list(zip(*count_pairs))
         word_to_id = dict(zip(words, range(len(words))))
 
-        return word_to_id
+        id_to_word = {v: k for k, v in word_to_id.items()}
 
-    word_to_id = _build_vocab()
+        return word_to_id, id_to_word
 
-    cue = ['the', 'meaning', 'of', 'life', 'is']
-    encoded_cue = [word_to_id[word] for word in cue] + [0]*(CUTOFF_LENGTH - len(cue))
+    word_to_id, id_to_word = _build_vocab()
 
+    input_string = "The meaning of life is"
+    cue = input_string.lower().split()
+    print(cue)
 
-    generated_text = classifier.predict(
-        input_fn = lambda:d_prov.test_input_fn(FLAGS.data_path, config),
-        hooks=[dropout_eval_hook]
-    )
-    # tf.estimator.inputs.numpy_input_fn(
-    #                 x={"features": np.asarray(encoded_cue), 
-    #                    "length": np.asarray(5)},
-    #                 shuffle=False
-    #             ),
+    for _ in range(CUTOFF_LENGTH-len(cue)):
+        encoded_cue = [word_to_id[word] for word in cue] + [0]*(CUTOFF_LENGTH - len(cue))
+        print(encoded_cue)
+        print("length:",len(cue))
+        generated_text = classifier.predict(
+            input_fn = tf.estimator.inputs.numpy_input_fn(
+                        x={'sequence':np.reshape(np.asarray(encoded_cue),[1,CUTOFF_LENGTH]),'length':np.asarray([len(cue)])},
+                        batch_size=1,
+                        num_epochs=1,
+                        shuffle=False,
+                        queue_capacity=1,
+                        num_threads=1
+                    ),
+            hooks=[dropout_eval_hook]
+        )
 
-    def create_rev_dict(words_to_ids):
-        ids_to_words = {v: k for k, v in words_to_ids.items()}
-        return ids_to_words
+        
+        for ids in generated_text:
+            print([id_to_word[id] for id in ids][len(cue)-1])
+            cue = cue + [[id_to_word[id] for id in ids][len(cue)-1]]
 
-    ids_to_words = create_rev_dict(word_to_id)
-    print(generated_text)
-    #print([ids_to_words[id] for id in [ids for ids in generated_text]])
-    for ids in generated_text:
-        print([ids_to_words[id] for id in ids])
+    print(cue)
     
 
 if __name__ == '__main__':
