@@ -4,7 +4,7 @@ import tensorflow as tf
 import sys
 import numpy as np
 import collections
-
+import pickle
 from configs import *
 import model_functions
 from fast_weight_cell import FastWeightCell
@@ -58,6 +58,7 @@ def ptb_model_fn(features, labels, mode, params):
     global learning_rate
 
     config = params['config']
+    word_frequency = tf.constant(params['word_frequency'])
 
     dropout = tf.placeholder(dtype=config.dtype)
     sequence_length = features['length']
@@ -106,14 +107,18 @@ def ptb_model_fn(features, labels, mode, params):
     
     # seq2seq loss doesn't work with float16
     # print("logits:",logits[:,:-1]) # expecting batchsize x sequence_length-1 x 10.000
+    predictions = tf.argmax(logits[:,:-1],axis=2) # batchsize x sequence_length, values up to 10.000
+    #predictions = tf.Print(predictions, [predictions])
+    mask = tf.sequence_mask(sequence_length, CUTOFF_LENGTH-1, dtype=tf.float32)
+    loss_weights = tf.multiply(mask, tf.exp(tf.gather(word_frequency, predictions))) # 1000 is irrelevant, just to keep numbers managable, does not matter for the loss
+    #loss_weights = tf.Print(loss_weights, [loss_weights])
     loss = tf.contrib.seq2seq.sequence_loss(
         logits=tf.cast(logits[:,:-1],tf.float32),
         targets=labels,
-        weights=tf.sequence_mask(sequence_length, CUTOFF_LENGTH-1, dtype=tf.float32),
+        weights=loss_weights,
         average_across_timesteps=True,
         average_across_batch=True)
-    #loss = tf.losses.mean_squared_error(labels=labels, predictions=logits)
-    predictions = tf.argmax(logits[:,:-1],axis=2)
+    
     # Compute evaluation metrics.
     accuracy = tf.metrics.accuracy(labels=labels,
                                    predictions=predictions,#tf.argmax(logits[:,:-1],axis=2),
@@ -153,11 +158,15 @@ def main(_):
     with open(os.path.join(FLAGS.save_path,"config.txt"), "w") as text_file:
         print(config, file=text_file)
 
+    with open(os.path.join(FLAGS.data_path, 'word_frequencies.pickle'), 'rb') as handle:
+        word_frequency = pickle.load(handle)
+
     classifier = tf.estimator.Estimator(
         model_fn=ptb_model_fn,
         model_dir=FLAGS.save_path,
         params={
-            'config': config
+            'config': config,
+            'word_frequency': word_frequency
         })
 
     class FeedHook(tf.train.SessionRunHook):
