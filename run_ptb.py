@@ -30,6 +30,8 @@ flags.DEFINE_bool("use_bfp16", False,
     "Train using 16-bit truncated floats instead of 32-bit float")
 flags.DEFINE_bool("train", True,
     "Whether to train the model or not. If not, text is generated from checkpoint.")
+flags.DEFINE_string("model", "baseline",
+    "Which model configuration to use.")
     
 FLAGS = flags.FLAGS
 
@@ -50,6 +52,20 @@ def get_config():
     return config
 
 
+def get_cell(model, dropout, config):
+    if(model == 'baseline'):
+        return tf.nn.rnn_cell.MultiRNNCell(
+            [tf.contrib.rnn.DropoutWrapper(
+                tf.nn.rnn_cell.LSTMCell(config.layer_dim),output_keep_prob=dropout) for _ in range(2)])
+    elif(model == 'single_fw'):
+        return tf.contrib.rnn.DropoutWrapper(
+                    FastWeightCell(num_units = config.layer_dim, 
+                            lam = config.fw_lambda,
+                            eta = config.fw_eta,
+                            layer_norm = config.fw_layer_norm,
+                            activation = config.fw_activation), output_keep_prob=dropout)
+
+
 def ptb_model_fn(features, labels, mode, params):
     """
     Model Function
@@ -58,7 +74,6 @@ def ptb_model_fn(features, labels, mode, params):
     global learning_rate
 
     config = params['config']
-    word_frequency = tf.constant(params['word_frequency'])
 
     dropout = tf.placeholder(dtype=config.dtype)
     sequence_length = features['length']
@@ -80,9 +95,7 @@ def ptb_model_fn(features, labels, mode, params):
     if mode == tf.estimator.ModeKeys.TRAIN or mode == tf.estimator.ModeKeys.EVAL:
         labels = labels[:,1:]
 
-    cell = tf.nn.rnn_cell.MultiRNNCell(
-            [tf.contrib.rnn.DropoutWrapper(
-                tf.nn.rnn_cell.LSTMCell(config.layer_dim),output_keep_prob=dropout) for _ in range(2)])
+    cell = get_cell(FLAGS.model, dropout, config)
 
     inp = tf.unstack(tf.cast(inputs, config.dtype), axis=1) # should yield list of length sequence_length-1
     hidden_states, final_state = tf.nn.static_rnn(cell, inp, sequence_length=sequence_length, dtype=config.dtype)
@@ -100,28 +113,22 @@ def ptb_model_fn(features, labels, mode, params):
     logits = tf.transpose(tf.stack(logits),[1,0,2])
     #print("logits: ",logits) # expecting sequence_length x batchsize x vocab_size => batchsize x seq_length x vocab_size
     #logits += 1e-8 # to prevent NaN loss during training
-
+    
     if mode == tf.estimator.ModeKeys.PREDICT:
         predictions = tf.argmax(logits,axis=2)
         return tf.estimator.EstimatorSpec(mode, predictions=predictions)
     
     # seq2seq loss doesn't work with float16
-    # print("logits:",logits[:,:-1]) # expecting batchsize x sequence_length-1 x 10.000
-    predictions = tf.argmax(logits[:,:-1],axis=2) # batchsize x sequence_length, values up to 10.000
-    #predictions = tf.Print(predictions, [predictions])
-    mask = tf.sequence_mask(sequence_length, CUTOFF_LENGTH-1, dtype=tf.float32)
-    loss_weights = tf.multiply(mask, tf.exp(tf.gather(word_frequency, predictions))) # 1000 is irrelevant, just to keep numbers managable, does not matter for the loss
-    #loss_weights = tf.Print(loss_weights, [loss_weights])
     loss = tf.contrib.seq2seq.sequence_loss(
         logits=tf.cast(logits[:,:-1],tf.float32),
         targets=labels,
-        weights=loss_weights,
+        weights=tf.sequence_mask(sequence_length, CUTOFF_LENGTH-1, dtype=tf.float32),
         average_across_timesteps=True,
         average_across_batch=True)
     
     # Compute evaluation metrics.
     accuracy = tf.metrics.accuracy(labels=labels,
-                                   predictions=predictions,#tf.argmax(logits[:,:-1],axis=2),
+                                   predictions=tf.argmax(logits[:,:-1],axis=2),
                                    weights=tf.sequence_mask(sequence_length, CUTOFF_LENGTH-1, dtype=tf.float32),
                                    name='acc_op')
     perplexity = tf.exp(loss)
@@ -137,7 +144,7 @@ def ptb_model_fn(features, labels, mode, params):
     # Create training op.
     assert mode == tf.estimator.ModeKeys.TRAIN
 
-    optimizer = tf.train.GradientDescentOptimizer(learning_rate)
+    optimizer = tf.train.AdamOptimizer()#GradientDescentOptimizer(learning_rate)
     if(config.clip_gradients):
         gvs = optimizer.compute_gradients(loss)
         capped_gvs = [(tf.clip_by_norm(grad, config.clip_value_norm), var) for grad, var in gvs]
@@ -158,15 +165,11 @@ def main(_):
     with open(os.path.join(FLAGS.save_path,"config.txt"), "w") as text_file:
         print(config, file=text_file)
 
-    with open(os.path.join(FLAGS.data_path, 'word_frequencies.pickle'), 'rb') as handle:
-        word_frequency = pickle.load(handle)
-
     classifier = tf.estimator.Estimator(
         model_fn=ptb_model_fn,
         model_dir=FLAGS.save_path,
         params={
-            'config': config,
-            'word_frequency': word_frequency
+            'config': config
         })
 
     class FeedHook(tf.train.SessionRunHook):
