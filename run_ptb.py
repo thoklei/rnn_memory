@@ -9,7 +9,7 @@ from configs import *
 import model_functions
 from fast_weight_cell import FastWeightCell
 from ptb_data_generator import CUTOFF_LENGTH
-
+from dynamic_fast_weight_cell import DynamicFastWeightCell
 if(tf.__version__ == '1.4.0'):
     print("using old data provider")
     import old_ptb_data_provider as d_prov
@@ -64,6 +64,18 @@ def get_cell(model, dropout, config):
                             eta = config.fw_eta,
                             layer_norm = config.fw_layer_norm,
                             activation = config.fw_activation), output_keep_prob=dropout)
+    elif(model == 'single_dyn_fw'):
+        return DynamicFastWeightCell(num_units = config.layer_dim, 
+                                     sequence_length = CUTOFF_LENGTH,
+                                     lam = config.fw_lambda, 
+                                     eta = config.fw_eta, 
+                                     layer_norm = config.fw_layer_norm, 
+                                     norm_gain = config.norm_gain,
+                                     norm_shift = config.norm_shift,
+                                     activation = config.fw_activation,
+                                     batch_size = config.batchsize, 
+                                     num_inner_loops = config.fw_inner_loops,
+                                     dtype=config.dtype)
 
 
 def ptb_model_fn(features, labels, mode, params):

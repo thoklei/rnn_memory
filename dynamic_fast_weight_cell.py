@@ -94,7 +94,6 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
                  norm_shift=1,
                  activation=tf.nn.relu,
                  num_inner_loops=1,
-                 reuse=tf.AUTO_REUSE,
                  scal_prod_weight=100,
                  dtype=tf.float32):
         """ 
@@ -113,7 +112,7 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
         reuse           = whether to reuse variables in existing scope. 
 
         """
-        super(DynamicFastWeightCell, self).__init__(num_units, activation, reuse, dtype)
+        super(DynamicFastWeightCell, self).__init__(num_units, activation, reuse=tf.AUTO_REUSE)
         self._num_units = num_units
         self._lam = lam
         self._eta = eta
@@ -141,7 +140,7 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
         shape = inp.get_shape()[-1:]
         gamma_init = init_ops.constant_initializer(self._g)
         beta_init = init_ops.constant_initializer(self._b)
-        with vs.variable_scope(scope, reuse=tf.AUTO_REUSE):
+        with vs.variable_scope(scope):
             vs.get_variable("gamma", shape=shape, initializer=gamma_init)
             vs.get_variable("beta", shape=shape, initializer=beta_init)
         normalized = layers.layer_norm(inp, reuse=True, scope=scope)
@@ -169,15 +168,15 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
 
             t = len(self.hidden_states)
             for tau, old_hidden in enumerate(self.hidden_states):
-                norm_old_hidden = old_hidden / tf.norm(old_hidden,keepdims=True,axis=1)
-                norm_h_s = h_s / tf.norm(h_s,keepdims=True,axis=1)
+                #norm_old_hidden = old_hidden / tf.norm(old_hidden,keepdims=True,axis=1)
+                #norm_h_s = h_s / tf.norm(h_s,keepdims=True,axis=1)
                 #print("norm_oh:",norm_old_hidden)
                 #print("norm_hs:",norm_h_s) # should both be 128x50
-                scal_prod = tf.reduce_sum(tf.multiply(tf.matmul(norm_old_hidden, tf.transpose(
-                    norm_h_s)), tf.diag(np.ones([self.batch_size], dtype=np.float32))), 1)
+                scal_prod = tf.reduce_sum(tf.multiply(tf.matmul(old_hidden, tf.transpose(
+                    h_s)), tf.diag(np.ones([self.batch_size], dtype=np.float32))), 1)
                 #scal_prod = tf.Print(scal_prod, [scal_prod],"scal_prod:")
                 state_sum += tf.multiply(self._lam**(t-tau-1) * old_hidden,
-                                          tf.reshape(tf.multiply(tf.norm(old_hidden,axis=1)*tf.norm(h_s,axis=1),scal_prod), [self.batch_size, 1]))
+                                          tf.reshape(scal_prod, [self.batch_size, 1]))
                 #state_sum = tf.Print(state_sum, [state_sum],message="state sum:")
                 #tf.norm(old_hidden,axis=1)*tf.norm(h_s,axis=1)
             h_A = self._eta * tf.reshape(state_sum, [-1, self._num_units])
