@@ -10,6 +10,9 @@ import model_functions
 from fast_weight_cell import FastWeightCell
 from ptb_data_generator import CUTOFF_LENGTH
 from dynamic_fast_weight_cell import DynamicFastWeightCell
+from autoconceptor import Autoconceptor
+
+
 if(tf.__version__ == '1.4.0'):
     print("using old data provider")
     import old_ptb_data_provider as d_prov
@@ -42,6 +45,8 @@ def get_config():
         config = FW_PTB_Config()
     elif FLAGS.config == "default_ptb":
         config = Default_PTB_Config()
+    elif FLAGS.config == "auto_ptb":
+        config = Auto_PTB_Config()
     else:
         raise ValueError("Config not understood. Options are: default_ar, mnist_784, mnist_28.")
 
@@ -65,7 +70,7 @@ def get_cell(model, dropout, config):
                             layer_norm = config.fw_layer_norm,
                             activation = config.fw_activation), output_keep_prob=dropout)
     elif(model == 'single_dyn_fw'):
-        return DynamicFastWeightCell(num_units = config.layer_dim, 
+        return tf.contrib.rnn.DropoutWrapper(DynamicFastWeightCell(num_units = config.layer_dim, 
                                      sequence_length = CUTOFF_LENGTH,
                                      lam = config.fw_lambda, 
                                      eta = config.fw_eta, 
@@ -75,7 +80,15 @@ def get_cell(model, dropout, config):
                                      activation = config.fw_activation,
                                      batch_size = config.batchsize, 
                                      num_inner_loops = config.fw_inner_loops,
-                                     dtype=config.dtype)
+                                     dtype=config.dtype), output_keep_prob=dropout)
+    elif(model == 'single_autoconceptor'):
+        return Autoconceptor(num_units = config.layer_dim, 
+                             alpha = config.c_alpha, 
+                             lam = config.c_lambda, 
+                             batchsize = config.batchsize, 
+                             activation=config.c_activation, 
+                             layer_norm=config.c_layer_norm,
+                             dtype=config.dtype)
 
 
 def ptb_model_fn(features, labels, mode, params):
@@ -128,6 +141,7 @@ def ptb_model_fn(features, labels, mode, params):
     
     if mode == tf.estimator.ModeKeys.PREDICT:
         predictions = tf.argmax(logits,axis=2)
+        print("predictions:",predictions)
         return tf.estimator.EstimatorSpec(mode, predictions=predictions)
     
     # seq2seq loss doesn't work with float16
@@ -293,8 +307,10 @@ def main(_):
 
         
         for ids in generated_text:
+            print("ids:",ids)
             print([id_to_word[id] for id in ids][len(cue)-1])
             cue = cue + [[id_to_word[id] for id in ids][len(cue)-1]]
+            break
 
     print(cue)
     
