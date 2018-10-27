@@ -11,6 +11,7 @@ from fast_weight_cell import FastWeightCell
 from ptb_data_generator import CUTOFF_LENGTH
 from dynamic_fast_weight_cell import DynamicFastWeightCell
 from autoconceptor import Autoconceptor
+from irnn_cell import IRNNCell
 
 
 if(tf.__version__ == '1.4.0'):
@@ -47,6 +48,8 @@ def get_config():
         config = Default_PTB_Config()
     elif FLAGS.config == "auto_ptb":
         config = Auto_PTB_Config()
+    elif FLAGS.config == "irnn_ptb":
+        config = IRNN_PTB_Config()
     else:
         raise ValueError("Config not understood. Options are: default_ar, mnist_784, mnist_28.")
 
@@ -89,6 +92,10 @@ def get_cell(model, dropout, config):
                              activation=config.c_activation, 
                              layer_norm=config.c_layer_norm,
                              dtype=config.dtype)
+    elif( model == 'multi_irnn'):
+        return tf.nn.rnn_cell.MultiRNNCell(
+            [tf.contrib.rnn.DropoutWrapper(
+                IRNNCell(config.layer_dim,dtype=config.dtype), output_keep_prob=dropout) for _ in range(4)])
 
 
 def ptb_model_fn(features, labels, mode, params):
