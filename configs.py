@@ -137,7 +137,7 @@ class Auto_PTB_Config(Default_PTB_Config):
 
         self.keep_prob = 0.4
         self.embedding_size = 650
-        self.layer_dim = 650
+        self.layer_dim = 100
         self.clip_gradients = False
 
         self.c_layer_norm = False
@@ -155,6 +155,25 @@ class IRNN_PTB_Config(Default_PTB_Config):
         self.embedding_size = 650
         self.layer_dim = 300
         self.clip_gradients = False
+
+        self.optimizer = tf.train.AdamOptimizer()
+
+
+class Auto_LSTM_PTB_Config(Default_PTB_Config):
+
+    def __init__(self):
+        super(Auto_LSTM_PTB_Config,self).__init__()
+
+        self.keep_prob = 0.4
+        self.embedding_size = 650
+        self.lstm_layer_dim = 100
+        self.auto_layer_dim = 100
+        self.layer_dim = self.auto_layer_dim
+        self.clip_gradients = False
+
+        self.c_layer_norm = False
+        self.c_alpha = 20
+        self.c_lambda = 0.001
 
         self.optimizer = tf.train.AdamOptimizer()
     

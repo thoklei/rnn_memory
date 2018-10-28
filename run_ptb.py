@@ -50,6 +50,8 @@ def get_config():
         config = Auto_PTB_Config()
     elif FLAGS.config == "irnn_ptb":
         config = IRNN_PTB_Config()
+    elif FLAGS.config == "lstm_auto_ptb":
+        config = Auto_LSTM_PTB_Config()
     else:
         raise ValueError("Config not understood. Options are: default_ar, mnist_784, mnist_28.")
 
@@ -96,6 +98,18 @@ def get_cell(model, dropout, config):
         return tf.nn.rnn_cell.MultiRNNCell(
             [tf.contrib.rnn.DropoutWrapper(
                 IRNNCell(config.layer_dim,dtype=config.dtype), output_keep_prob=dropout) for _ in range(4)])
+    elif(model == 'lstm_auto'):
+        return tf.nn.rnn_cell.MultiRNNCell(
+            [tf.contrib.rnn.DropoutWrapper(
+                tf.nn.rnn_cell.LSTMCell(config.lstm_layer_dim),output_keep_prob=dropout),
+            tf.contrib.rnn.DropoutWrapper(
+                Autoconceptor(num_units = config.auto_layer_dim, 
+                             alpha = config.c_alpha, 
+                             lam = config.c_lambda, 
+                             batchsize = config.batchsize, 
+                             activation=config.c_activation, 
+                             layer_norm=config.c_layer_norm,
+                             dtype=config.dtype), output_keep_prob=dropout)])
 
 
 def ptb_model_fn(features, labels, mode, params):
