@@ -135,9 +135,9 @@ class Auto_PTB_Config(Default_PTB_Config):
     def __init__(self):
         super(Auto_PTB_Config,self).__init__()
 
-        self.keep_prob = 0.5
+        self.keep_prob = 0.4
         self.embedding_size = 650
-        self.layer_dim = 500
+        self.layer_dim = 650
         self.clip_gradients = False
 
         self.c_layer_norm = False

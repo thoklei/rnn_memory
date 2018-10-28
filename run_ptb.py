@@ -85,13 +85,13 @@ def get_cell(model, dropout, config):
                                      num_inner_loops = config.fw_inner_loops,
                                      dtype=config.dtype), output_keep_prob=dropout)
     elif(model == 'single_autoconceptor'):
-        return Autoconceptor(num_units = config.layer_dim, 
+        return tf.contrib.rnn.DropoutWrapper(Autoconceptor(num_units = config.layer_dim, 
                              alpha = config.c_alpha, 
                              lam = config.c_lambda, 
                              batchsize = config.batchsize, 
                              activation=config.c_activation, 
                              layer_norm=config.c_layer_norm,
-                             dtype=config.dtype)
+                             dtype=config.dtype), output_keep_prob=dropout)
     elif( model == 'multi_irnn'):
         return tf.nn.rnn_cell.MultiRNNCell(
             [tf.contrib.rnn.DropoutWrapper(
