@@ -10,9 +10,6 @@ import os
 
     Ex.
     c6a7s4??a = 7 (it asking for the value for the key a)
-    This is a very interesting dataset because
-    it requires the model to retrieve and use temporary memory
-    in order to accurately predict the proper value for the key.
 """
 
 def get_three_letters():

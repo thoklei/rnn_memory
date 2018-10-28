@@ -166,8 +166,8 @@ class Auto_LSTM_PTB_Config(Default_PTB_Config):
 
         self.keep_prob = 0.4
         self.embedding_size = 650
-        self.lstm_layer_dim = 100
-        self.auto_layer_dim = 100
+        self.lstm_layer_dim = 500
+        self.auto_layer_dim = 300
         self.layer_dim = self.auto_layer_dim
         self.clip_gradients = False
 
