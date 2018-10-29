@@ -186,11 +186,25 @@ class FW_LSTM_PTB_Config(FW_PTB_Config):
         self.keep_prob = 0.4
         self.embedding_size = 650
         self.lstm_layer_dim = 500
-        self.fw_layer_dim = 500
+        self.fw_layer_dim = 300
         self.layer_dim = self.fw_layer_dim
         self.clip_gradients = False
 
 
         self.optimizer = tf.train.AdamOptimizer()        
+
+
+class Multi_FW_PTB_Config(FW_PTB_Config):
+
+    def __init__(self):
+        super(Multi_FW_PTB_Config,self).__init__()
+
+        self.keep_prob = 0.4
+        self.embedding_size = 650
+        self.layer_dim = 500
+        self.clip_gradients = False
+
+
+        self.optimizer = tf.train.AdamOptimizer()     
 
 
