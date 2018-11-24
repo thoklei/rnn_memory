@@ -1,3 +1,9 @@
+"""
+This code is adapted from https://github.com/GokuMohandas/fast-weights/blob/master/fw/data_utils.py
+It is used to generate the data for the associative retrieval task.
+"""
+
+
 import numpy as np
 import random
 import _pickle as cPickle
@@ -9,7 +15,7 @@ import os
     https://arxiv.org/abs/1610.06258 Ba et al.
 
     Ex.
-    c6a7s4??a = 7 (it asking for the value for the key a)
+    c6a7s4??a = 7 (asking for the value for the key a)
 """
 
 def get_three_letters():

@@ -1,3 +1,7 @@
+"""
+Runs the experiments for the Penn Treebank. A model is trained on the sentences 
+and generates a sentence on its own by always predicting the next word.
+"""
 
 import os
 import tensorflow as tf

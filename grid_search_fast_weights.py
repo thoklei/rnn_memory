@@ -1,3 +1,14 @@
+"""
+This code is used to perform a grid search over lambda and eta for the fast weights
+on the associative retrieval task (which should be easy to change, though).
+
+The way my grid searches work is simple: Three loops, one for each set of hyperparameter values
+and one for the number of runs (three should probably be enough). For each run, the estimator
+writes everything (i.e. checkpoints, summary...) into the model directory. At the end of each run, the checkpoints
+are discarded, while the summary files are written to the summary path, so you end up with a folder with a bunch of
+tfevents-files. Also, the configs that were used and the averaged results are written into a results.txt-file.
+"""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function

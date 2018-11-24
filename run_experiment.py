@@ -1,3 +1,7 @@
+"""
+This file is the entry point for most of the experiments conducted for the thesis.
+Check the readme for detailed instructions on how to start the experiments.
+"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function

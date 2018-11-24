@@ -1,5 +1,8 @@
-import collections
+"""
+The static version of the Fast Weight cell.
+"""
 
+import collections
 import tensorflow as tf
 import numpy as np
 from tensorflow.contrib.layers.python.layers import layers
@@ -19,6 +22,10 @@ from tensorflow.python.util import nest
 _BIAS_VARIABLE_NAME = "bias"
 _WEIGHTS_VARIABLE_NAME = "kernel"
 
+# this function is copied from somewhere in the Tensorflow code.
+# this code needs to work for different versions of TF, but the function
+# was located in two different files, so this code would only work for either 1.11 or 1.4.
+# So I decided to simply copy the function.
 
 def _linear(args,
             output_size,

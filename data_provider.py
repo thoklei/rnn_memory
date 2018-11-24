@@ -1,3 +1,6 @@
+"""
+This file contains the input functions used by the estimators to feed MNIST and associative retrieval data.
+"""
 import tensorflow as tf
 import os
 
@@ -45,29 +48,48 @@ def read_dataset(path, mode, batch_size, repeat, seq_length, seq_width, out_dtyp
     training_path = os.path.join(path, mode+'.tfrecords')
     training_dataset = tf.data.TFRecordDataset(training_path)
     training_dataset = training_dataset.map(_parse_function)
-    training_dataset = training_dataset.shuffle(100)
+    training_dataset = training_dataset.shuffle(64000)
     training_dataset = training_dataset.batch(batch_size, drop_remainder=True)
 
-    if(repeat):
-        training_dataset = training_dataset.repeat()
+    # Pro Tip: Don't use repeat. I learned that the hard way:
+    # If you start the training anew for each epoch, by calling train with the input function, 
+    # the data is reshuffled. If you use repeat, that does not happen, the data is just repeated a bunch of times in that order.
+    # This is usually not the behaviour you want, and it can have suprisingly strong negative effects on training.
+    #if(repeat):
+    #    training_dataset = training_dataset.repeat()
 
     training_dataset = training_dataset.prefetch(1)
     return training_dataset 
 
 
 def input_fn(path, task, config, mode, repeat):
+    """
+    Core input function. Calls the read_dataset function with the appropriate parameters.
+    """
     return read_dataset(path, mode, config.batchsize, repeat, 
         seq_length=config.input_length, seq_width=config.input_dim, 
         out_dtype=config.dtype, tfrecord_dtype=config.tfrecord_dtype)
     
 
 def train_input_fn(path, task, config):
+    """
+    input function used for training data
+    These functions are only convenience wrappers for the input_fn above.
+    """
     return input_fn(path, task, config, 'train', True)
 
 
 def validation_input_fn(path, task, config):
+    """
+    input function used for validation data (used to check for overfitting)
+    These functions are only convenience wrappers for the input_fn above.
+    """
     return input_fn(path, task, config, 'validation', False)
 
 
 def test_input_fn(path, task, config):
+    """
+    input function used for test data (to evaluate final performance)
+    These functions are only convenience wrappers for the input_fn above.
+    """
     return input_fn(path, task, config, 'test', False)

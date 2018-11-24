@@ -1,3 +1,7 @@
+"""
+The IRNN-cell, i.e. an RNN cell that is initialized by the identity and uses ReLUs.
+"""
+
 from tensorflow.python.ops import init_ops
 import tensorflow as tf
 import numpy as np

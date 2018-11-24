@@ -1,3 +1,7 @@
+"""
+This file contains the input functions used by the estimators to feed Penn Treebank data.
+"""
+
 import tensorflow as tf
 import os
 from ptb_data_generator import CUTOFF_LENGTH

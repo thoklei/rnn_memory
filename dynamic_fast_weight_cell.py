@@ -1,3 +1,8 @@
+"""
+The dynamic version of the Fast Weight cell, which stores hidden states as a list 
+instead of the Fast Weight matrix.
+"""
+
 import collections
 import numpy as np
 import tensorflow as tf
@@ -15,6 +20,11 @@ from tensorflow.python.util import nest
 
 _BIAS_VARIABLE_NAME = "bias"
 _WEIGHTS_VARIABLE_NAME = "kernel"
+
+# this function is copied from somewhere in the Tensorflow code.
+# this code needs to work for different versions of TF, but the function
+# was located in two different files, so this code would only work for either 1.11 or 1.4.
+# So I decided to simply copy the function.
 
 def _linear(args,
             output_size,
@@ -94,7 +104,6 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
                  norm_shift=1,
                  activation=tf.nn.relu,
                  num_inner_loops=1,
-                 scal_prod_weight=100,
                  dtype=tf.float32):
         """ 
         Initialize parameters for a FastWeightCell
@@ -110,7 +119,7 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
         num_inner_loops = the number of inner loops to transform hs to hs+1 (only 1 works properly)
         sequence_length = the length of input sequences, required to allocate memory
         reuse           = whether to reuse variables in existing scope. 
-
+        dtype           = which data type to use, float32 should do the trick
         """
         super(DynamicFastWeightCell, self).__init__(num_units, activation, reuse=tf.AUTO_REUSE)
         self._num_units = num_units
@@ -126,8 +135,6 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
         self._activation = activation
 
         self.hidden_states = []
-        self.scal_prod_weight = scal_prod_weight
-        #self.scal_prod_weight = tf.get_variable(name="scal_prod_weight",shape=(),initializer=init_ops.constant_initializer(scal_prod_weight))
 
     def _norm(self, inp, scope="layer_norm"):
         """ 
@@ -188,6 +195,6 @@ class DynamicFastWeightCell(tf.nn.rnn_cell.BasicRNNCell):
 
             h_s = self._activation(h_pre)
 
-        self.hidden_states.append(h_s)#(tf.scalar_mul(self.scal_prod_weight,tf.norm(h_s,keepdims=True)))
+        self.hidden_states.append(h_s)
 
         return h_s, h_s

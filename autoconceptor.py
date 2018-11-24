@@ -1,13 +1,14 @@
+"""
+The Autoconceptor, adapted from Jaeger 2017, and the DynStateTuple that
+is used to store the conceptor matrix.
+"""
+
 import numpy as np
 import collections
 import tensorflow as tf
 from tensorflow.python.ops import init_ops
 from tensorflow.contrib.layers.python.layers import layers
 from tensorflow.python.layers import base as base_layer
-from tensorflow.python.ops.rnn_cell_impl import _concat
-from tensorflow.python.ops import array_ops
-from tensorflow.python.framework import ops
-
 
 # following the desing of LSTM state tuples
 _DynStateTuple = collections.namedtuple("DynStateTyple", ["C", "h"])
@@ -35,19 +36,22 @@ class DynStateTuple(_DynStateTuple):
 
 class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):
     """
-    Autoconceptor, adapted from Jaeger.
+    Autoconceptor, adapted from Jaeger 2017
     """
 
-    def __init__(self, num_units, alpha, lam, batchsize, activation=tf.nn.tanh, reuse=None, layer_norm=False, dtype=tf.float32):
+    def __init__(self, num_units, alpha, lam, batchsize, 
+            activation=tf.nn.tanh, reuse=None, layer_norm=False, dtype=tf.float32, 
+            initializer=None):
         """
         Args:
-        num_units  = hidden state size of RNN cell
-        alpha      = alpha for autoconceptor, used to calculate aperture as alpha**-2
-        lam        = lambda for autoconceptor, scales conceptor-matrix
-        batchsize  = number of training examples per batch (we need this to allocate memory properly)
-        activation = which nonlinearity to use (tanh works best, relu only with layer norm)
-        reuse      = whether to reuse variables, just leave this as None
-        layer_norm = whether to apply layer normalization, not necessary if using tanh
+        num_units   = hidden state size of RNN cell
+        alpha       = alpha for autoconceptor, used to calculate aperture as alpha**-2
+        lam         = lambda for autoconceptor, scales conceptor-matrix
+        batchsize   = number of training examples per batch (we need this to allocate memory properly)
+        activation  = which nonlinearity to use (tanh works best, relu only with layer norm)
+        reuse       = whether to reuse variables, just leave this as None
+        layer_norm  = whether to apply layer normalization, not necessary if using tanh
+        initializer = which initializer to use for the weight matrix, good idea is to use init_ops.constant_initializer(0.05 * np.identity(num_units))
         """
         super(Autoconceptor, self).__init__(num_units=num_units, activation=activation, reuse=reuse)
         self.num_units = num_units
@@ -58,6 +62,7 @@ class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):
         self._activation = activation
         self.aperture_fact = tf.constant(alpha**(-2), name="aperture")
         self._state_size = self.zero_state(batchsize, dtype)
+        self.initializer = initializer or init_ops.constant_initializer(0.05 * np.identity(num_units))
 
         #no idea what this does, to be honest
         self.input_spec = base_layer.InputSpec(ndim=2)
@@ -112,7 +117,7 @@ class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):
         self.W = self.add_variable(
             "W",
             shape=[self.num_units, self.num_units],
-            initializer=init_ops.constant_initializer(0.05 * np.identity(self.num_units)),
+            initializer=self.initializer,
             dtype=self.dtype)
 
         self.built = True
@@ -123,6 +128,7 @@ class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):
         Performs layer normalization on the hidden state.
 
         inp = the input to be normalized
+        scope = name for the variable scope, just leave as default
         
         Returns inp normalized by learned parameters gamma and beta
         """
@@ -149,18 +155,23 @@ class Autoconceptor(tf.nn.rnn_cell.BasicRNNCell):
         """
         C, state = h
 
+        # so far, standard RNN logic
         state = self._activation(
             (tf.matmul(inputs, self.W_in) + self.b_in) + (tf.matmul(state, self.W))
         )
 
+        # if layer norm is activated, normalize layer output as explained in Ba et al. 2016
         if(self.layer_norm):
             state = self._norm(state)
         
         state = tf.reshape(state, [-1, 1, self.num_units])
 
-        # Std.Version
+        
+
+        # updating C following update rule presented by Jaeger
         C = C + self.c_lambda * ( tf.matmul(tf.transpose((state - tf.matmul(state, C)), [0,2,1]), state) - tf.scalar_mul(self.aperture_fact,C) )
         
+        # multiplying state with C
         state = tf.matmul(state, C)
 
         # Reshapes necessary for std. matrix multiplication, where one matrix

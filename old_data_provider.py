@@ -1,3 +1,8 @@
+"""
+This file contains the input functions used by the estimators to feed MNIST and associative retrieval data,
+just for an older version of Tensorflow (main difference: las couple of lines of the read_dataset function.)
+"""
+
 import tensorflow as tf
 import os
 

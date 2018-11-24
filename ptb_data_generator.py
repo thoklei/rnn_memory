@@ -1,3 +1,8 @@
+"""
+This code writes the raw txt-files that contain the sample text to numerically encoded tfrecords-files. 
+Code is adapted from https://github.com/tensorflow/models/blob/master/tutorials/rnn/ptb/reader.py
+"""
+
 import os
 import collections
 import pickle
@@ -110,7 +115,7 @@ def _file_to_word_ids(filename, word_to_id, simple):
     if(simple):
         return [[word_to_id[word] for word in sentence if (word in word_to_id and not word in illegal)] for sentence in data] # I'm sorry
     else:
-        return [[word_to_id[word] for word in sentence if word in word_to_id] for sentence in data] # I'm sorry
+        return [[word_to_id[word] for word in sentence if word in word_to_id] for sentence in data]
 
 
 def _file_to_word_ids_old(filename, word_to_id):

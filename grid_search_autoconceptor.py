@@ -1,3 +1,14 @@
+"""
+This code is used to perform a grid search over lambda and alpha for the autoconceptor
+on the associative retrieval task (which should be easy to change, though).
+
+The way my grid searches work is simple: Three loops, one for each set of hyperparameter values
+and one for the number of runs (three should probably be enough). For each run, the estimator
+writes everything (i.e. checkpoints, summary...) into the model directory. At the end of each run, the checkpoints
+are discarded, while the summary files are written to the summary path, so you end up with a folder with a bunch of
+tfevents-files. Also, the configs that were used and the averaged results are written into a results.txt-file.
+"""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -53,6 +64,12 @@ def get_config():
         config = Default_Addition_Config()
     else:
         raise ValueError("Config not understood. Options are: default_ar, mnist_784, mnist_28.")
+
+    if(FLAGS.use_bfp16):
+        config.dtype = tf.bfloat16
+    else:
+        config.dtype = tf.float32
+
     return config
 
 
@@ -69,11 +86,12 @@ def get_model_fn(task,mode):
 def main(_):
 
     config = get_config()
+    config.c_layer_norm = False
 
     #config.num_epochs = 3 # change this for mnist
-    num_runs = 1
-    train_steps = 1500
-    c_lambdas = [0.001,0.002, 0.003, 0.004, 0.005, 0.006, 0.007, 0.008, 0.009]
+    num_runs = 3
+    train_steps = 5000
+    c_lambdas = [0.001, 0.01, 0.05, 0.1, 0.15, 0.3]
     c_alphas = [20]
 
     for lam in c_lambdas:
@@ -100,15 +118,15 @@ def main(_):
 
                 summary_dir = os.path.join(FLAGS.summary_path,"{}_{}".format(lam,alpha),"run_{}".format(run))
              
-                # Train the Model.
-                classifier.train(
-                    input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, FLAGS.task, config),
-                    steps=train_steps) #500*128 = 64000 = number of training samples
-
+                for _ in range(10):
+                    # Train the Model.
+                    classifier.train(
+                        input_fn=lambda:d_prov.train_input_fn(FLAGS.data_path, FLAGS.task, config)) #500*128 = 64000 = number of training samples
+    
                 eval_result = classifier.evaluate(
                     input_fn=lambda:d_prov.test_input_fn(FLAGS.data_path, FLAGS.task, config),
                     name="test",
-                    steps=1000
+                    steps=100
                 )
                 print("Evaluation complete")
                 res_list.append(eval_result['accuracy'])

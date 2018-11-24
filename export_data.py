@@ -1,6 +1,6 @@
 """
 
-Write Data to TFRecords format
+Writes Data to TFRecords format.
 
 Code adapted from
 https://github.com/tensorflow/tensorflow/blob/master/tensorflow/examples/how_tos/reading_data/convert_to_records.py
@@ -62,6 +62,10 @@ def record_ar():
 
 
 def record_addition(sequence_length):
+    """
+    This code supports the addition task too, as presented in the IRNN paper. 
+    I did not end up conducting tests with it, though.
+    """
     def _convert_to(data_set, name):
         seq, labels = data_set
         num_examples = len(seq)

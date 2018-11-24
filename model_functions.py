@@ -1,3 +1,16 @@
+"""
+This file contains some simple logic for creating the desired type of recurrent cell and for
+constructing the model functions.
+
+This grew over time, I started out with the first couple of variants and later added more and
+more complicated architectures, so the code is quite long, but don't let that intimidate you, it
+is also quite straight forward. 
+
+We have static and dynamic classification model functions, in case you want to use static_rnn or dynamic_rnn.
+It should be noted though that the dynamic variant of the fast weights (the one which does not store the entire
+matrix but calculates it from a list of old hidden states) does only work with static_rnn.
+"""
+
 from autoconceptor import Autoconceptor
 from irnn_cell import IRNNCell
 from fast_weight_cell import FastWeightCell
@@ -18,7 +31,6 @@ def get_rnn_cell(cell_type, config):
         cell = tf.nn.rnn_cell.MultiRNNCell([tf.contrib.rnn.BasicRNNCell(config.layer_dim, dtype=config.dtype) for _ in range(4)])
     elif(cell_type == 'lstm'):
         cell = tf.contrib.rnn.BasicLSTMCell(config.layer_dim, dtype=config.dtype)
-        #cell = tf.contrib.rnn.LSTMBlockCell(config.layer_dim)
     elif(cell_type == 'multi_lstm'):
         cell = tf.nn.rnn_cell.MultiRNNCell(
             [tf.contrib.rnn.DropoutWrapper(

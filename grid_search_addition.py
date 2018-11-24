@@ -1,3 +1,9 @@
+"""
+Code for performing a grid search over parameters for the addition task.
+This code is not actually used, I just wrote it in case anyone is interested
+in the addition task at some point.
+"""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
