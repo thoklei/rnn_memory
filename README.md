@@ -1,39 +1,80 @@
-# memory-matrices
 A tensorflow implementation of experiments and models used in 
 
 "Using Fast Weights to Attend to the Recent Past" by Ba et al
 
 "A Simple Way to Initialize Recurrent Networks of Rectified Linear Units" by Le, Jaitly, Hinton 
 
-# 1. Overall Structure
-This code allows you to reproduce two different experiments on five different kinds of recurrent models. 
+"Using Conceptors to Manage Neural Long-Term Memories for Temporal Patterns" by Jäger
+
+# 1. Background
+This code allows you to reproduce three different experiments on five different kinds of recurrent models. It accompanies my Bachelor's thesis, which explains the models that were used here in greater detail.
 
 ## 1.1 Tasks
 
-The first task is a so-called associative retrieval task, which tests a model's ability to quickly memorize characteristics of a simple sequence. The model is presented with a sequence of unique character-number pairs, followed by a query for a character. It then has to match that character to the corresponding number. For example, the model would be presented with the sequence "c5u3b9i1??u", where "??" marks the beginning of the query. The content of the query is "u", and the correct answer would be "3", since the number that corresponds to "u" in the query was "3".  
+The first task is a so-called associative retrieval task, which tests a model's ability to quickly memorize characteristics of a simple sequence. The model is presented with a sequence of unique character-number pairs, followed by a query for a character. It then has to match that character to the corresponding number. For example, the model would be presented with the sequence "c5u3b9i1??u", where "??" marks the beginning of the query. The content of the query is "u", and the correct answer would be "3", since the number that corresponds to "u" in the sequence was "3".  
 
-The second task is the classification of sequential MNIST-data. For this task, the model is presented with training examples consisting of flattened MNIST-images, i.e. vectors of shape (784,1). The 784 grey-values of the images are presented to the model as a sequence instead of an image, as if the image was scanned row by row, column by column. 
+The second task is the classification of sequential MNIST-data. For this task, the model is presented with training examples consisting of flattened MNIST-images, i.e. vectors of shape (784,1), but the code is flexible so that MNIST-data can also be presented as vectors of shape (28,28) which is useful for conducting tests on less powerful hardware.
+
+The third task is a language modelling problem. The Penn Treebank dataset is used, although the code allows the generation of the corresponding training files from any large text file. The Penn Treebank is an interesting training dataset because it is very small and therefore challenging, recurrent models tend to overfit the data, which is why this dataset has been used for the papers in which recurrent dropout was presented. The model is presented with sentences and is supposed to predict the next word in the sequence.
+
+The scripts also support the addition task as described in the IRNN-paper, during which a model has to learn to correctly add two numbers, but no experiments where conducted with this task, so I can't guarantee that everything works as it should.
 
 ## 1.2 Models
 
-The first and most simple kind of model that can be applied to these tasks is an RNN. It is comparably fast, but struggles with the associative retrieval and only achieves about 50-60% Accuracy on the MNIST-task.
+The first and most simple kind of model that can be applied to these tasks is an RNN. It is comparably fast, but struggles with the associative retrieval and only achieves about 50-60% accuracy on the MNIST-task. It is useless for the language modelling task.
 
-The second model is a standard LSTM as presented by Hochreiter et al. Because of the many different gates, these models have many trainable parameters per recurrent unit, which makes them slow, but they achieve higher accuracy rates than RNNs.
+The second model is a standard LSTM as presented by Hochreiter and Schmidhuber. Because of the many different gates, these models have many trainable parameters per recurrent unit, which makes them slow, but they achieve higher accuracy rates than RNNs and state-of-the-art performance on language modelling if regularized by dropout.
 
-The third possible model is an IRNN, which basically is an RNN that was initialized using the identity matrix for the weight matrix instead of random values. See the paper by Le et al.
+The third possible model is an IRNN, which basically is an RNN that was initialized using the identity matrix for the weight matrix instead of random values. It is surprisingly good at learning the long-term-dependencies in the MNIST-task. See the paper by Le et al.
 
-The fourth model is the fast-weights architecture as presented by Ba et al, which takes longer per step but achieves better results at an earlier stage of the training. 
+The fourth model is the fast-weights architecture as presented by Ba et al, which takes longer per step but achieves better results at an earlier stage of the training. It is an order of magnitude faster on the associative retrieval task, and complex architectures that involve FW-cells perform well on language modelling.
 
-The fifth model is the autoconceptor as presented by Jaeger.
+The fifth model is the autoconceptor, but not exactly as presented by Jaeger. Here, the conceptor matrix is inserted into a regular RNN, the weights of which are also updated using gradient descent. The autoconceptor beats every other model on the associative retrieval task.
 
 # 2. Running the experiments
 
-To run the experiments, generate the necessary data as described below and run the file exp_estimator.py with the necessary flags.
+To run the associative retrieval- and MNIST-experiments, generate the necessary data as described below and run the file run_experiments.py with the necessary flags.
 
 ## 2.1 Generating Data
 
-The data is generated by running export_data.py with the flags dataset and path. Path is the (absolute) path to the folder in which you want the data to be created (multiple tfrecords-files will be created, for training and testing), while dataset defines which data to create. You can choose between mnist and associative_retrieval. For example, run `python3 export_data.py --path=path/to/datafolder --dataset=mnist` to create MNIST-data and `python3 export_data.py --path=path/to/datafolder --dataset=associative-retrieval` to create AR-data.
+The data is generated by running export_data.py with the flags 'dataset' and 'path'. 'path' is the (absolute) path to the folder in which you want the data to be created (multiple tfrecords-files will be created, for training and testing), while 'dataset' defines which data to create. You can choose between 'mnist' and 'associative_retrieval'. For example, run `python3 export_data.py --path=path/to/datafolder --dataset=mnist` to create MNIST-data and `python3 export_data.py --path=path/to/datafolder --dataset=associative-retrieval` to create AR-data. The flag 'length' is only required for the addition dataset.
 
-## 2.2 Training the model
+The code for generating the associative retrieval data was adapted from https://github.com/GokuMohandas/fast-weights/blob/master/fw/data_utils.py
 
-To train a model, run "exp_estimator.py" while specifying where to look for the data, where to store checkpoints and summaries and which model to train on which data. For example, `python3 exp_estimator.py --data_path=path/to/datafolder --save_path=path/to/outputfolder --model=autoconceptor --task=associative_retrieval --config=default_ar` would initiate the training of an autoconceptor-cell on the associative retrieval task. You could then follow the training progress using TensorBoard, (--logdir=path/to/outputfolder). The training session is a monitored training session, so the training process can be stopped and restarted at any time.
+## 2.2 Training a model
+
+To train a model, run "run_experiment.py" while specifying where to look for the data, where to store checkpoints and summaries and which model to train on which data. For example, `python3 run_experiment.py --data_path=path/to/datafolder/ --save_path=path/to/outputfolder --model=autoconceptor --task=associative_retrieval --config=default_ar` would initiate the training of an autoconceptor-cell on the associative retrieval task. You could then follow the training progress using TensorBoard, (logdir=path/to/outputfolder). The training session is a monitored training session, so the training process can be stopped and restarted at any time. If restarted, the estimator will check whether there are checkpoints in the output directory and warm-start from there.
+After the training is complete, the model will be evaluated on the test set. 
+
+To train a model on the Penn Treebank language modelling task, run "run_ptb.py" with the desired flags, e.g. `python3 run_ptb.py --config=default_ptb --data_path=path/to/datafolder --save_path=path/to/outputfolder --model=single_fw`would train a single Fast Weight cell on the Penn Treebank dataset. After training is complete, this script cues the network with the phrase "the meaning of life is". The network will return a prediction for the next word for every word of that input phrase. The last of these predictions (i.e. the word that the network expects after 'is') will be appended to the cueing phrase, and the process is repeated. 
+
+Both of these files have some other flags as well:
+
+use_bfp16 = Whether to use 16-bit floats or not, defaults to false
+mode = either 'static' or 'dynamic'. Determines whether tf.nn.static_rnn or tf.nn.dynamic_rnn should be used. If possible, use static. If the model is too memory-intensive, use dynamic instead.
+
+## 2.3 Configs
+
+The models rely on a couple of external hyperparameters (e.g. lambda and alpha for the conceptor or lambda and eta for the Fast Weights). All of the hyperparameters are bundled in simple config-objects that reside in "configs.py". The run-files contain a function 'get_config' that loads one of these configs dependending on the configs-flag. If you write your own config, you will have to adjust this method. Also, I recommend following the inheritance scheme of the configs: If you want to change something, inherit from the config that is closest to what you need and override the relevant parameters instead of changing the base config. This leads to a large file with many configs which are not all that different, but ensures that you do not mess up a config that some of your earlier results depend on. 
+
+# 3 How it works
+
+## 3.1 Model Functions
+
+When the run-file is started, a custom estimator is created with the model directory that was provided via the 'data_path'-flag. To create an estimator, a model function is required which creates the graph etc. In run_ptb.py, the function that generates the model function is located in the file itself, while for run_experiments.py, this function is located in model_functions.py. We can choose between static and dynamic classification functions (which are only different with respect to the utility function that is used, e.g. tf.nn.static_rnn, and the different requirements that follow from that) and a scalar function (which would only be used for the addition task, because addition is not a classification, but a regression problem). Inside of the model function, an instance of RNN-cell is created from the specifications that were provided in the params. This is what the get_rnn_cell-function is for, which is essentially a big if-elif that returns the desired cell. If you want to experiment with new architectures (e.g. an IRNN followed by an FW-cell followed by an Autoconceptor) you would have to create a new cell here. 
+
+## 3.2 Custom Cells
+
+The three different custom RNN-cells (IRNN, FW, Autoconceptor) are each located in distinct files (autoconceptor.py, fast_weight_cell.py, dynamic_fast_weight_cell.py and irnn_cell.py. They inherit from the RNN base class that TensorFlow provides. (btw, these files are not located in sub-folders, because that didn't work on the university grid.)
+
+## 3.3 Data Provider
+
+An Estimator needs three input functions: One for training, one for testing, one for validation data. These input functions can be implemented in multiple ways, but the simplest one probably is to return a tf.data.Dataset, for example a tf.data.TFRecordDataset. The estimator will then automatically iterate over the values that this dataset contains. These values are read from the respective data files. 
+
+## 3.4 Hyperparameter Search
+
+In order to find the appropriate hyperparameters for the respective models/tasks, grid searches need to be conducted. The two relevant grid search files (ignoring the addition grid search because it was not relevant for the thesis) are structured like the regular run_experiment.py-file, the difference is just that the training happens inside three nested loops that iterate over the values for the parameters / try the same set of parameters multiple times. After each set of runs, the average loss value is calculated and stored in a .txt-file together with the configuration that was used to obtain these runs. The model checkpoints etc. are discarded after the runs, but the summary files are stored as specified by the 'summary_path'-flag.
+
+# 4 Scripts
+
+The folder 'scripts' contains small scripts that were mostly used to generate plots for the thesis from .csv files (which were downloaded from TensorBoard). 
